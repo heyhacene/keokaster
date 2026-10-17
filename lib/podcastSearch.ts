@@ -78,6 +78,47 @@ export const TRENDING_PODCASTS: SearchResultItem[] = [
   },
 ];
 
+function fetchJsonp<T = any>(url: string, timeoutMs = 5000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      return reject(new Error('Window non disponible'));
+    }
+    const callbackName = `itunes_cb_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    const script = document.createElement('script');
+    let timer: NodeJS.Timeout | null = null;
+
+    const cleanup = () => {
+      try {
+        delete (window as any)[callbackName];
+      } catch {}
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+
+    (window as any)[callbackName] = (data: T) => {
+      if (timer) clearTimeout(timer);
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = () => {
+      if (timer) clearTimeout(timer);
+      cleanup();
+      reject(new Error('JSONP script error'));
+    };
+
+    timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('JSONP timeout'));
+    }, timeoutMs);
+
+    const separator = url.includes('?') ? '&' : '?';
+    script.src = `${url}${separator}callback=${callbackName}`;
+    document.head.appendChild(script);
+  });
+}
+
 export async function searchPodcasts(query: string): Promise<SearchResultItem[]> {
   const cleanQuery = query.trim();
   if (!cleanQuery) return TRENDING_PODCASTS;
@@ -98,16 +139,32 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     ];
   }
 
+  const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=podcast&country=FR&limit=30`;
+  let data: any = null;
+
+  // 1. Essai avec fetch direct
   try {
-    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=podcast&country=FR&limit=25`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Erreur recherche iTunes');
-    const data = await res.json();
-
-    if (!data.results || !Array.isArray(data.results)) {
-      return [];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(itunesUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      data = await res.json();
     }
+  } catch (fetchErr) {
+    console.warn('Fetch iTunes direct indisponible, bascule sur JSONP WebView:', fetchErr);
+  }
 
+  // 2. Secours JSONP (contourne 100% des restrictions CORS de la WebView mobile)
+  if (!data || !data.results) {
+    try {
+      data = await fetchJsonp(itunesUrl, 4500);
+    } catch (jsonpErr) {
+      console.warn('JSONP iTunes indisponible:', jsonpErr);
+    }
+  }
+
+  if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
     return data.results
       .filter((r: any) => r.feedUrl) // Uniquement ceux avec un flux RSS exploitable
       .map((r: any) => {
@@ -123,13 +180,14 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
           episodeCount: r.trackCount,
         };
       });
-  } catch (err) {
-    console.error('Erreur recherche podcast:', err);
-    // Filtrage local en fallback
-    return TRENDING_PODCASTS.filter(
-      (p) =>
-        p.title.toLowerCase().includes(cleanQuery.toLowerCase()) ||
-        p.author.toLowerCase().includes(cleanQuery.toLowerCase())
-    );
   }
+
+  // 3. Fallback local si aucun réseau
+  const lower = cleanQuery.toLowerCase();
+  return TRENDING_PODCASTS.filter(
+    (p) =>
+      p.title.toLowerCase().includes(lower) ||
+      p.author.toLowerCase().includes(lower) ||
+      p.categories.some((c) => c.toLowerCase().includes(lower))
+  );
 }

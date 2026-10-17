@@ -44,9 +44,33 @@ export default function SearchPage() {
     return () => window.removeEventListener('keokaster_subs_changed', refreshSubs);
   }, []);
 
-  const handleSearch = async (searchTerm: string) => {
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults(TRENDING_PODCASTS);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchPodcasts(query);
+        setResults(res);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const triggerImmediateSearch = async (searchTerm: string) => {
+    setQuery(searchTerm);
     if (!searchTerm.trim()) {
       setResults(TRENDING_PODCASTS);
+      setLoading(false);
       return;
     }
     setLoading(true);
@@ -100,9 +124,11 @@ export default function SearchPage() {
         <input
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            handleSearch(e.target.value);
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              triggerImmediateSearch(query);
+            }
           }}
           placeholder="Titre, animateur, sujet (ex: HugoDécrypte, Tech, Histoire...)"
           className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-sm"
@@ -120,10 +146,7 @@ export default function SearchPage() {
           <button
             key={tag}
             type="button"
-            onClick={() => {
-              setQuery(tag);
-              handleSearch(tag);
-            }}
+            onClick={() => triggerImmediateSearch(tag)}
             className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white shrink-0 transition"
           >
             {tag}

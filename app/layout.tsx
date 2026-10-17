@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import PlayerBar from '@/components/PlayerBar';
 import FullPlayerModal from '@/components/FullPlayerModal';
 import AdSkipBanner from '@/components/AdSkipBanner';
+import AppUpdateNotifier from '@/components/AppUpdateNotifier';
 
 export const metadata: Metadata = {
   title: 'Keo Kaster — Podcasts Libres & Anti-Pub',
@@ -22,6 +23,7 @@ export default function RootLayout({
         <PlayerProvider>
           <Navbar />
           <AdSkipBanner />
+          <AppUpdateNotifier />
           <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 pb-28">
             {children}
           </main>

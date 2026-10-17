@@ -12,7 +12,7 @@ export default function Navbar() {
     { href: '/', label: 'Découvrir', icon: Radio },
     { href: '/search', label: 'Recherche', icon: Search },
     { href: '/library', label: 'Bibliothèque', icon: Library },
-    { href: '/settings', label: 'Anti-Pub', icon: ShieldCheck },
+    { href: '/settings', label: 'Paramètres', icon: Settings },
   ];
 
   return (
