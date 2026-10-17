@@ -17,10 +17,10 @@ export default function AdSkipBanner() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-200">
-              Anti-Pub Keo Kaster
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-200 flex items-center gap-1">
+              <span>⚡ Moteur IA ZeroPub</span>
             </span>
-            <ShieldCheck className="w-3 h-3 text-emerald-300" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
           </div>
           <p className="text-xs font-bold text-white truncate">
             {lastSkippedAd.label}

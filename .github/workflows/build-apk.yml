@@ -160,11 +160,11 @@ jobs:
             
             Lecteur de podcasts moderne, souple, synchronisé et sans coupures publicitaires.
             
-            ### ✨ Fonctionnalités :
-            - ⚡ **Moteur ZeroPub** : Saut automatique des segments publicitaires et intros sponsorisées.
-            - 🔍 **Moteur de recherche universel** : Accès direct à des millions d'émissions (iTunes / Podcast Index) et flux RSS privés.
-            - 🎛️ **Lecteur audio avancé** : Vitesse de lecture variable (0.75x à 2.5x), minuteur de sommeil, chapitres interactifs.
-            - 📱 **Lecture en arrière-plan** : Contrôles sur l'écran de verrouillage et notifications Android.
+            ### ✨ Nouveautés & Corrections :
+            - ⚡ **Moteur Anti-Pub IA ZeroPub** : Analyse sémantique NLP des sponsors (HelloFresh, NordVPN, codes promos...), détection Dynamic Ad Insertion (Megaphone, Acast, Ausha) et coupure automatique instantanée pendant l'écoute avec compteur de temps gagné.
+            - 🎯 **Moteur de recherche intelligent & filtré** : Priorisation stricte par phrase et mots exacts (fini les 50 pochettes non pertinentes, affichage clair et direct).
+            - 🖼️ **Affichage et navigation stabilisés** : Dimensions des pochettes strictement verrouillées (évite les images 3000px bloquantes), bouton Retour toujours accessible et pagination fluide des flux de plus de 1000 épisodes.
+            - 📱 **Signature APK fixe & Mises à jour directes** : Keystore permanent assurant des mises à jour fluides sans désinstaller l'application.
             
             ### 📲 Téléchargement direct :
             - **Fichier principal** : [KeoKaster-Build-${{ github.run_number }}.apk](https://github.com/heyhacene/keokaster/releases/download/v1.0.0-build.${{ github.run_number }}/KeoKaster-Build-${{ github.run_number }}.apk)

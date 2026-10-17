@@ -47,6 +47,7 @@ export default function FullPlayerModal() {
     duration,
     speed,
     adSegments,
+    aiAdResult,
     sleepTimerRemainingSec,
     isFullPlayerOpen,
     togglePlay,
@@ -145,13 +146,45 @@ export default function FullPlayerModal() {
         </div>
 
         {/* TITRE DE L'ÉPISODE */}
-        <div className="text-center w-full px-2 mb-4">
+        <div className="text-center w-full px-2 mb-3">
           <h2 className="text-base sm:text-lg font-extrabold text-white leading-snug line-clamp-2">
             {currentEpisode.title}
           </h2>
           <p className="text-xs text-purple-300 font-medium mt-1 truncate">
             {currentEpisode.podcastTitle}
           </p>
+
+          {/* BADGE D'ANALYSE IA ZEROPUB */}
+          {aiAdResult && (
+            <div className="mt-2.5 inline-flex flex-col items-center gap-1 max-w-full">
+              <div
+                className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 border ${
+                  aiAdResult.hasAds
+                    ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 shadow-sm shadow-emerald-950'
+                    : 'bg-slate-900 border-slate-700/80 text-slate-400'
+                }`}
+              >
+                <Zap
+                  className={`w-3.5 h-3.5 ${
+                    aiAdResult.hasAds ? 'text-emerald-400 fill-emerald-400 animate-pulse' : 'text-slate-500'
+                  }`}
+                />
+                <span className="truncate max-w-xs">{aiAdResult.summary}</span>
+              </div>
+              {aiAdResult.detectedSponsors.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-1 text-[10px] mt-0.5">
+                  {aiAdResult.detectedSponsors.map((sp) => (
+                    <span
+                      key={sp}
+                      className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold"
+                    >
+                      Sponsor : {sp}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* BARRE DE PROGRESSION AVEC ZONES PUBS MARQUÉES */}

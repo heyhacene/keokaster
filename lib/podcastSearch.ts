@@ -119,6 +119,17 @@ function fetchJsonp<T = any>(url: string, timeoutMs = 5000): Promise<T> {
   });
 }
 
+function normalizeText(str: string): string {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function searchPodcasts(query: string): Promise<SearchResultItem[]> {
   const cleanQuery = query.trim();
   if (!cleanQuery) return TRENDING_PODCASTS;
@@ -139,6 +150,7 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     ];
   }
 
+  // Requête iTunes avec terme nettoyé
   const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=podcast&country=FR&limit=50`;
   let data: any = null;
 
@@ -156,7 +168,7 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
   }
 
   // 2. Secours JSONP (contourne 100% des restrictions CORS de la WebView mobile)
-  if (!data || !data.results) {
+  if (!data || !data.results || data.results.length === 0) {
     try {
       data = await fetchJsonp(itunesUrl, 4500);
     } catch (jsonpErr) {
@@ -165,29 +177,39 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
   }
 
   if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
-    const qLower = cleanQuery.toLowerCase();
-    const qWords = qLower.split(/\s+/).filter(Boolean);
+    const normQuery = normalizeText(cleanQuery);
+    const qWords = normQuery.split(' ').filter(Boolean);
 
-    const scoredItems = data.results
-      .filter((r: any) => r.feedUrl) // Uniquement ceux avec un flux RSS exploitable
+    const items = data.results
+      .filter((r: any) => r.feedUrl) // Uniquement avec flux RSS
       .map((r: any) => {
         const canonicalId = getCanonicalPodcastId(r.feedUrl);
         const title = r.collectionName || r.trackName || '';
         const author = r.artistName || 'Artiste inconnu';
-        const tLower = title.toLowerCase();
-        const aLower = author.toLowerCase();
+        const normTitle = normalizeText(title);
+        const normAuthor = normalizeText(author);
 
-        // Calcul du score de pertinence intelligent
+        const exactMatch = normTitle === normQuery;
+        const startsWith = normTitle.startsWith(normQuery);
+        const containsPhrase = normTitle.includes(normQuery);
+
+        let matchedWords = 0;
+        for (const w of qWords) {
+          const wordRegex = new RegExp(`(^|\\s)${w}`, 'i');
+          if (wordRegex.test(normTitle) || normTitle.includes(w)) {
+            matchedWords++;
+          }
+        }
+        const allWordsMatch = qWords.length > 0 && matchedWords >= qWords.length;
+
         let score = 0;
-        if (tLower === qLower) score += 5000;
-        if (tLower.startsWith(qLower)) score += 3000;
-        if (tLower.includes(qLower)) score += 1500;
-        if (qWords.length > 1 && qWords.every((w: string) => tLower.includes(w))) score += 800;
-        const wordsInTitle = qWords.filter((w: string) => tLower.includes(w)).length;
-        score += wordsInTitle * 250;
-        if (aLower.startsWith(qLower)) score += 400;
-        else if (aLower.includes(qLower)) score += 200;
-        if (/[éèêëàâîïôûùç]/i.test(title)) score += 60;
+        if (exactMatch) score += 25000;
+        if (startsWith) score += 15000;
+        if (containsPhrase) score += 8000;
+        if (allWordsMatch) score += 4000;
+        score += matchedWords * 500;
+        if (normAuthor.includes(normQuery)) score += 1200;
+        if (/[éèêëàâîïôûùç]/i.test(title) || /[éèêëàâîïôûùç]/i.test(author)) score += 600;
 
         return {
           id: canonicalId,
@@ -199,13 +221,33 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
           categories: r.genres || [r.primaryGenreName].filter(Boolean),
           episodeCount: r.trackCount,
           _score: score,
+          _containsPhrase: containsPhrase,
+          _allWordsMatch: allWordsMatch,
         };
       });
 
-    // Tri par pertinence : le podcast qui correspond exactement au titre apparaît EN TOUT PREMIER
-    scoredItems.sort((a: any, b: any) => b._score - a._score);
+    // 1. Priorité absolue : les podcasts contenant la phrase complète (élimine tous les podcasts russes / allemands hors sujet !)
+    const phraseMatches = items.filter((i: any) => i._containsPhrase);
+    let finalList: any[] = [];
 
-    return scoredItems.map(({ _score, ...item }: any) => item);
+    if (phraseMatches.length > 0) {
+      finalList = phraseMatches;
+    } else {
+      // 2. Sinon, les podcasts contenant tous les mots de la recherche
+      const allWordMatches = items.filter((i: any) => i._allWordsMatch);
+      if (allWordMatches.length > 0) {
+        finalList = allWordMatches;
+      } else {
+        // 3. En dernier recours, les meilleurs scores
+        finalList = items.filter((i: any) => i._score > 0);
+      }
+    }
+
+    // Tri par pertinence : le meilleur résultat en premier
+    finalList.sort((a: any, b: any) => b._score - a._score);
+
+    // Limiter aux 15 meilleurs résultats pour ne jamais submerger l'utilisateur de pochettes inutiles
+    return finalList.slice(0, 15).map(({ _score, _containsPhrase, _allWordsMatch, ...item }: any) => item);
   }
 
   // 3. Fallback local uniquement si le terme correspond à nos flux préenregistrés

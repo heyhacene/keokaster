@@ -2,7 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Episode, AdSegment } from '@/types/podcast';
-import { buildAdSegments, checkAdSkip, saveLocalAdMarker } from './adBlocker';
+import { buildAdSegments, checkAdSkip, saveLocalAdMarker, getLocalAdMarkers } from './adBlocker';
+import {
+  analyzeEpisodeAdsWithAI,
+  AIAdDetectionResult,
+  recordAICutStats,
+} from './aiAdAnalyzer';
 import {
   savePlaybackPosition,
   getPlaybackPositions,
@@ -22,6 +27,7 @@ interface PlayerContextType {
   speed: number;
   queue: Episode[];
   adSegments: AdSegment[];
+  aiAdResult: AIAdDetectionResult | null;
   lastSkippedAd: { label: string; timestamp: number } | null;
   sleepTimerRemainingSec: number | null;
   isFullPlayerOpen: boolean;
@@ -54,6 +60,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [speed, setSpeedState] = useState(1.0);
   const [queue, setQueueState] = useState<Episode[]>([]);
   const [adSegments, setAdSegments] = useState<AdSegment[]>([]);
+  const [aiAdResult, setAiAdResult] = useState<AIAdDetectionResult | null>(null);
   const [lastSkippedAd, setLastSkippedAd] = useState<{ label: string; timestamp: number } | null>(null);
   const [sleepTimerRemainingSec, setSleepTimerRemainingSec] = useState<number | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
@@ -97,16 +104,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         savePlaybackPosition(ep.id, cur);
       }
 
-      // 2. MOTEUR ANTI-PUB KEO KASTER : Détection et saut automatique
+      // 2. MOTEUR ANTI-PUB IA KEO KASTER : Détection et saut automatique
       if (segments.length > 0) {
         const check = checkAdSkip(cur, segments);
         // Éviter de reboucler en boucle sur la même pub
         if (check.shouldSkip && check.seekTargetSec && Date.now() - lastSkipTriggerRef.current > 1500) {
           lastSkipTriggerRef.current = Date.now();
+          const cutDuration = Math.max(1, check.seekTargetSec - cur);
+          recordAICutStats(cutDuration);
           audio.currentTime = check.seekTargetSec;
           setCurrentTime(check.seekTargetSec);
 
-          const label = check.segment?.label || 'Segment publicitaire';
+          const label = check.segment?.label || '⚡ Publicité coupée par l\'IA';
           setLastSkippedAd({ label, timestamp: Date.now() });
           setTimeout(() => setLastSkippedAd(null), 4000);
         }
@@ -251,8 +260,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const pSettings = getPodcastSettings(ep.podcastId);
       const gSettings = getGlobalAdSettings();
 
-      // Construction des segments publicitaires à sauter
-      const segments = buildAdSegments(ep.id, ep.durationSec, ep.chapters, pSettings, gSettings);
+      // Moteur d'analyse IA ZeroPub : analyse sémantique, DAI et chapitres
+      let segments: AdSegment[] = [];
+      let detectionResult: AIAdDetectionResult | null = null;
+
+      if (gSettings.enabled) {
+        const introSec = pSettings.customIntroSkipSec ?? gSettings.defaultIntroSkipSec;
+        const outroSec = pSettings.customOutroSkipSec ?? gSettings.defaultOutroSkipSec;
+        detectionResult = analyzeEpisodeAdsWithAI(ep, ep.chapters, introSec, outroSec);
+        segments = [...detectionResult.segments];
+
+        // Intégrer les marqueurs signalés par l'utilisateur
+        const localMarkers = getLocalAdMarkers()[ep.id] || [];
+        if (localMarkers.length > 0) {
+          segments.push(...localMarkers);
+        }
+      }
+
+      setAiAdResult(detectionResult);
       setAdSegments(segments);
       adSegmentsRef.current = segments;
 
@@ -266,10 +291,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const positions = getPlaybackPositions();
       const savedPos = positions[ep.id] || 0;
 
-      // Si la position est à 0 et qu'un saut d'intro est actif
-      const startPos = savedPos === 0 && segments.length > 0 && segments[0].type === 'intro'
+      // Si la position est à 0 et qu'un saut d'intro / DAI est actif
+      const hasIntroCut = savedPos === 0 && segments.length > 0 && segments[0].type === 'intro';
+      const startPos = hasIntroCut
         ? segments[0].endTime + 0.1
         : savedPos;
+
+      if (hasIntroCut) {
+        recordAICutStats(segments[0].endTime);
+        const introLabel = segments[0].label || '⚡ Tunnel publicitaire sauté par l\'IA';
+        setLastSkippedAd({ label: introLabel, timestamp: Date.now() });
+        setTimeout(() => setLastSkippedAd(null), 4000);
+      }
 
       audio.src = ep.audioUrl;
       audio.playbackRate = pSettings.customSpeed || speed;
@@ -447,6 +480,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         speed,
         queue,
         adSegments,
+        aiAdResult,
         lastSkippedAd,
         sleepTimerRemainingSec,
         isFullPlayerOpen,

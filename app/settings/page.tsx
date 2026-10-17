@@ -15,6 +15,7 @@ import {
   CURRENT_KASTER_BUILD,
   PERMANENT_LATEST_APK_URL,
 } from '@/lib/apkUpdate';
+import { getAICutStats } from '@/lib/aiAdAnalyzer';
 import {
   Settings,
   Smartphone,
@@ -51,17 +52,29 @@ export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
 
+  // Statistiques IA ZeroPub
+  const [aiStats, setAiStats] = useState({ adsCut: 0, timeSavedMinutes: 0, timeSavedSeconds: 0 });
+
   useEffect(() => {
     setSettings(getGlobalAdSettings());
+    setAiStats(getAICutStats());
     const storedUser = localStorage.getItem('keokaster_user') || '';
     setKeoUser(storedUser);
     const storedSync = localStorage.getItem('keokaster_last_sync') || null;
     setLastSyncTime(storedSync);
 
+    // Écouter les mises à jour des statistiques en temps réel
+    const onStatsUpdated = () => setAiStats(getAICutStats());
+    window.addEventListener('keokaster_stats_updated', onStatsUpdated);
+
     // Vérifier silencieusement les mises à jour au chargement
     fetchLatestKeoKasterApk().then((rel) => {
       setApkRelease(rel);
     });
+
+    return () => {
+      window.removeEventListener('keokaster_stats_updated', onStatsUpdated);
+    };
   }, []);
 
   const handleCheckUpdates = async () => {
@@ -371,6 +384,44 @@ export default function SettingsPage() {
             />
             <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
           </label>
+        </div>
+
+        {/* STATS EN TEMPS RÉEL IA ZEROPUB */}
+        <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-slate-950 to-indigo-950/70 border border-emerald-500/30">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium">Publicités coupées</p>
+              <p className="text-lg font-extrabold text-emerald-300 font-mono">{aiStats.adsCut}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-purple-500/20 text-purple-300">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium">Temps préservé</p>
+              <p className="text-lg font-extrabold text-purple-300 font-mono">
+                {aiStats.timeSavedMinutes > 0
+                  ? `${aiStats.timeSavedMinutes} min`
+                  : `${aiStats.timeSavedSeconds}s`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* MOTEUR SÉMANTIQUE NLP & DAI */}
+        <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-1">
+          <p className="font-bold text-white flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Analyse sémantique IA & DAI active</span>
+          </p>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Reconnaissance automatique des sponsors (HelloFresh, NordVPN, codes promos), injection dynamique (Acast, Megaphone, Ausha) et coupure instantanée de la piste sonore.
+          </p>
         </div>
 
         {/* SAUTS D'INTRO / OUTRO */}
