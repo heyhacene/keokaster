@@ -20,10 +20,8 @@ export default function Navbar() {
       <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* LOGO KEO KASTER */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-amber-500 p-0.5 shadow-md shadow-purple-500/20 group-hover:scale-105 transition">
-            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <Radio className="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition" />
-            </div>
+          <div className="w-8 h-8 rounded-xl overflow-hidden shadow-md shadow-purple-500/20 group-hover:scale-105 transition border border-purple-500/30 bg-slate-950">
+            <img src="/icon.svg" alt="Keo Kaster" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">

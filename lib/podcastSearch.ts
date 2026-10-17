@@ -150,9 +150,17 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     ];
   }
 
-  // Normalisation des nombres ordinaux (ex: "1000ème" -> "1000") pour optimiser l'index iTunes
-  const simplifiedQuery = cleanQuery.replace(/(\d+)(?:[èe]me|er|ère|e)\b/gi, '$1');
-  const itunesQuery = simplifiedQuery !== cleanQuery ? `${cleanQuery} ${simplifiedQuery}` : cleanQuery;
+  // 1. Nettoyage de la requête pour l'index iTunes
+  // Remplacement des ordinaux (ex: "1000ème", "1000eme", "1er" -> "1000", "1")
+  const simplifiedQuery = cleanQuery
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/(\d+)(?:eme|er|ere|e)\b/gi, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Si la version simplifiée est différente, on l'utilise en priorité pour l'API
+  const itunesQuery = simplifiedQuery || cleanQuery;
 
   // Requête iTunes avec terme nettoyé
   const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(itunesQuery)}&entity=podcast&country=FR&limit=50`;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { searchPodcasts, SearchResultItem, TRENDING_PODCASTS } from '@/lib/podcastSearch';
 import PodcastCard from '@/components/PodcastCard';
 import { getSubscribedPodcasts, togglePodcastSubscription, getCanonicalPodcastId } from '@/lib/storage';
@@ -20,10 +20,32 @@ const CATEGORY_TAGS = [
 ];
 
 export default function SearchPage() {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResultItem[]>(TRENDING_PODCASTS);
+  // Récupération de l'état précédent sauvegardé (navigation Retour)
+  const [query, setQuery] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('keokaster_search_query') || '';
+    }
+    return '';
+  });
+
+  const [results, setResults] = useState<SearchResultItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedResults = sessionStorage.getItem('keokaster_search_results');
+        if (savedResults) {
+          const parsed = JSON.parse(savedResults);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return TRENDING_PODCASTS;
+  });
+
   const [loading, setLoading] = useState(false);
   const [subsMap, setSubsMap] = useState<Record<string, boolean>>({});
+  const isFirstMount = useRef(true);
 
   const refreshSubs = () => {
     const subs = getSubscribedPodcasts();
@@ -44,10 +66,46 @@ export default function SearchPage() {
     return () => window.removeEventListener('keokaster_subs_changed', refreshSubs);
   }, []);
 
+  // Restauration de la position de défilement (scroll) lors du retour arrière
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedScroll = sessionStorage.getItem('keokaster_search_scroll');
+      if (savedScroll) {
+        const scrollY = parseInt(savedScroll, 10);
+        if (!isNaN(scrollY) && scrollY > 0) {
+          setTimeout(() => {
+            window.scrollTo({ top: scrollY, behavior: 'instant' as any });
+          }, 80);
+        }
+      }
+
+      const handleScroll = () => {
+        sessionStorage.setItem('keokaster_search_scroll', String(window.scrollY));
+      };
+
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  // Recherche avec debounce
+  useEffect(() => {
+    // Si la page vient d'être restaurée depuis le sessionStorage avec déjà des résultats, ne pas recharger inutilement
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      if (query.trim() && results.length > 0 && results !== TRENDING_PODCASTS) {
+        return;
+      }
+    }
+
     if (!query.trim()) {
       setResults(TRENDING_PODCASTS);
       setLoading(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('keokaster_search_query');
+        sessionStorage.removeItem('keokaster_search_results');
+        sessionStorage.removeItem('keokaster_search_scroll');
+      }
       return;
     }
 
@@ -56,8 +114,12 @@ export default function SearchPage() {
       try {
         const res = await searchPodcasts(query);
         setResults(res);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('keokaster_search_query', query);
+          sessionStorage.setItem('keokaster_search_results', JSON.stringify(res));
+        }
       } catch (err) {
-        console.error(err);
+        console.error('Erreur recherche podcast:', err);
       } finally {
         setLoading(false);
       }
@@ -71,16 +133,37 @@ export default function SearchPage() {
     if (!searchTerm.trim()) {
       setResults(TRENDING_PODCASTS);
       setLoading(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('keokaster_search_query');
+        sessionStorage.removeItem('keokaster_search_results');
+        sessionStorage.removeItem('keokaster_search_scroll');
+      }
       return;
     }
+
     setLoading(true);
     try {
       const res = await searchPodcasts(searchTerm);
       setResults(res);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('keokaster_search_query', searchTerm);
+        sessionStorage.setItem('keokaster_search_results', JSON.stringify(res));
+      }
     } catch {
       // ignore
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    setResults(TRENDING_PODCASTS);
+    setLoading(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('keokaster_search_query');
+      sessionStorage.removeItem('keokaster_search_results');
+      sessionStorage.removeItem('keokaster_search_scroll');
     }
   };
 
@@ -136,7 +219,7 @@ export default function SearchPage() {
         {query.trim().length > 0 && !loading && (
           <button
             type="button"
-            onClick={() => setQuery('')}
+            onClick={handleClear}
             className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white"
             title="Effacer la recherche"
           >
@@ -194,7 +277,23 @@ export default function SearchPage() {
           </div>
         </div>
 
-        {results.length === 0 && !loading ? (
+        {/* AFFICHAGE : SKELETON LORS DE LA RECHERCHE OU RÉSULTATS */}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 animate-pulse">
+            {[...Array(6)].map((_, idx) => (
+              <div
+                key={idx}
+                className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-3 sm:p-3.5 space-y-3"
+              >
+                <div className="aspect-square w-full rounded-2xl bg-slate-800/70" />
+                <div className="space-y-1.5">
+                  <div className="h-3.5 bg-slate-800 rounded-md w-4/5" />
+                  <div className="h-2.5 bg-slate-800/50 rounded-md w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : results.length === 0 ? (
           <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800/60 p-6 space-y-2">
             <Radio className="w-10 h-10 text-slate-600 mx-auto mb-2" />
             <h3 className="text-sm font-bold text-white">Aucun podcast trouvé pour « {query} »</h3>
@@ -203,14 +302,14 @@ export default function SearchPage() {
             </p>
             <button
               type="button"
-              onClick={() => setQuery('')}
+              onClick={handleClear}
               className="mt-3 px-4 py-2 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 text-xs font-bold hover:bg-purple-600 hover:text-white transition"
             >
               Revenir aux suggestions
             </button>
           </div>
         ) : (
-          <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             {results.map((podcast) => (
               <PodcastCard
                 key={podcast.id}

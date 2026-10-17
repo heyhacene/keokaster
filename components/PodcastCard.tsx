@@ -30,6 +30,11 @@ export default function PodcastCard({
   return (
     <Link
       href={`/podcast?feed=${encodeURIComponent(podcast.feedUrl)}`}
+      onClick={() => {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('keokaster_search_scroll', String(window.scrollY));
+        }
+      }}
       className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-purple-500/40 rounded-3xl p-3 sm:p-3.5 transition-all flex flex-col justify-between shadow-xs hover:shadow-xl hover:shadow-purple-950/30"
     >
       <div className="space-y-2.5">
