@@ -116,11 +116,17 @@ export default function FullPlayerModal() {
       {/* JAQUETTE & INFOS */}
       <div className="max-w-md w-full mx-auto px-6 py-2 flex flex-col items-center justify-center flex-1">
         {/* POCHETTE */}
-        <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-3xl overflow-hidden shadow-2xl shadow-purple-900/40 border border-slate-800 relative mb-6">
+        <div
+          style={{ width: '256px', height: '256px', maxWidth: '75vw', maxHeight: '75vw' }}
+          className="rounded-3xl overflow-hidden shadow-2xl shadow-purple-900/40 border border-slate-800 relative mb-6 shrink-0"
+        >
           {currentEpisode.podcastArtwork ? (
             <img
               src={currentEpisode.podcastArtwork}
-              alt=""
+              alt={currentEpisode.title}
+              width={256}
+              height={256}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               className="w-full h-full object-cover"
             />
           ) : (

@@ -39,6 +39,7 @@ export default function PodcastCard({
             <img
               src={podcast.artworkUrl}
               alt={podcast.title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
               loading="lazy"
               onError={() => setHasImgError(true)}

@@ -139,7 +139,7 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     ];
   }
 
-  const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=podcast&country=FR&limit=30`;
+  const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=podcast&country=FR&limit=50`;
   let data: any = null;
 
   // 1. Essai avec fetch direct
@@ -165,24 +165,50 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
   }
 
   if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
-    return data.results
+    const qLower = cleanQuery.toLowerCase();
+    const qWords = qLower.split(/\s+/).filter(Boolean);
+
+    const scoredItems = data.results
       .filter((r: any) => r.feedUrl) // Uniquement ceux avec un flux RSS exploitable
       .map((r: any) => {
         const canonicalId = getCanonicalPodcastId(r.feedUrl);
+        const title = r.collectionName || r.trackName || '';
+        const author = r.artistName || 'Artiste inconnu';
+        const tLower = title.toLowerCase();
+        const aLower = author.toLowerCase();
+
+        // Calcul du score de pertinence intelligent
+        let score = 0;
+        if (tLower === qLower) score += 5000;
+        if (tLower.startsWith(qLower)) score += 3000;
+        if (tLower.includes(qLower)) score += 1500;
+        if (qWords.length > 1 && qWords.every((w: string) => tLower.includes(w))) score += 800;
+        const wordsInTitle = qWords.filter((w: string) => tLower.includes(w)).length;
+        score += wordsInTitle * 250;
+        if (aLower.startsWith(qLower)) score += 400;
+        else if (aLower.includes(qLower)) score += 200;
+        if (/[éèêëàâîïôûùç]/i.test(title)) score += 60;
+
         return {
           id: canonicalId,
-          title: r.collectionName || r.trackName,
-          author: r.artistName || 'Artiste inconnu',
+          title,
+          author,
           description: r.collectionCensoredName || '',
           feedUrl: r.feedUrl,
           artworkUrl: r.artworkUrl600 || r.artworkUrl100 || '',
           categories: r.genres || [r.primaryGenreName].filter(Boolean),
           episodeCount: r.trackCount,
+          _score: score,
         };
       });
+
+    // Tri par pertinence : le podcast qui correspond exactement au titre apparaît EN TOUT PREMIER
+    scoredItems.sort((a: any, b: any) => b._score - a._score);
+
+    return scoredItems.map(({ _score, ...item }: any) => item);
   }
 
-  // 3. Fallback local si aucun réseau
+  // 3. Fallback local uniquement si le terme correspond à nos flux préenregistrés
   const lower = cleanQuery.toLowerCase();
   return TRENDING_PODCASTS.filter(
     (p) =>

@@ -130,9 +130,21 @@ export default function SearchPage() {
               triggerImmediateSearch(query);
             }
           }}
-          placeholder="Titre, animateur, sujet (ex: HugoDécrypte, Tech, Histoire...)"
-          className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-sm"
+          placeholder="Titre, animateur, sujet (ex: Le 1000, HugoDécrypte, Tech...)"
+          className="w-full pl-10 pr-10 py-3.5 rounded-2xl bg-slate-900 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 shadow-md"
         />
+        {query.trim().length > 0 && !loading && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white"
+            title="Effacer la recherche"
+          >
+            <span className="w-5 h-5 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-xs font-bold">
+              ✕
+            </span>
+          </button>
+        )}
         {loading && (
           <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
             <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
@@ -147,31 +159,58 @@ export default function SearchPage() {
             key={tag}
             type="button"
             onClick={() => triggerImmediateSearch(tag)}
-            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white shrink-0 transition"
+            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold shrink-0 transition ${
+              query === tag
+                ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-600/30'
+                : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+            }`}
           >
             {tag}
           </button>
         ))}
       </div>
 
-      {/* RÉSULTATS */}
+      {/* RÉSULTATS OU SUGGESTIONS POPULAIRES */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            {query.trim() ? `${results.length} résultat(s)` : 'Suggestions populaires'}
-          </span>
+          <div className="flex items-center gap-2">
+            {query.trim() ? (
+              <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                {loading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Recherche en cours pour « {query} »...</span>
+                  </>
+                ) : (
+                  <span>{results.length} résultat(s) pour « {query} »</span>
+                )}
+              </span>
+            ) : (
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Suggestions populaires du moment</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {results.length === 0 && !loading ? (
-          <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800/60 p-6">
+          <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800/60 p-6 space-y-2">
             <Radio className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-            <h3 className="text-sm font-bold text-white">Aucun podcast trouvé</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Vérifiez l'orthographe ou collez directement l'adresse d'un flux RSS pour le charger.
+            <h3 className="text-sm font-bold text-white">Aucun podcast trouvé pour « {query} »</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Vérifiez l'orthographe ou collez directement l'adresse d'un flux RSS pour le charger sans publicité.
             </p>
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="mt-3 px-4 py-2 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 text-xs font-bold hover:bg-purple-600 hover:text-white transition"
+            >
+              Revenir aux suggestions
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}>
             {results.map((podcast) => (
               <PodcastCard
                 key={podcast.id}

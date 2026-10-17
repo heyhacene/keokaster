@@ -31,5 +31,5 @@ next-env.d.ts
 # Android
 android/app/build/
 android/.gradle/
-android/build/
 *.keystore
+!keokaster.keystore

@@ -222,6 +222,13 @@ export default function SettingsPage() {
             target="_blank"
             rel="noopener noreferrer"
             download
+            onClick={(e) => {
+              if (typeof window !== 'undefined') {
+                try {
+                  window.open(apkRelease?.downloadUrl || PERMANENT_LATEST_APK_URL, '_system');
+                } catch {}
+              }
+            }}
             className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-purple-950/40 active:scale-95"
           >
             <Download className="w-4 h-4" />

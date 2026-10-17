@@ -38,11 +38,17 @@ export default function PlayerBar() {
           onClick={openFullPlayer}
           className="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer group select-none"
         >
-          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-slate-800 shrink-0 border border-slate-700/80 shadow-md relative">
+          <div
+            style={{ width: '52px', height: '52px', minWidth: '52px', minHeight: '52px' }}
+            className="rounded-2xl overflow-hidden bg-slate-800 shrink-0 border border-slate-700/80 shadow-md relative"
+          >
             {currentEpisode.podcastArtwork ? (
               <img
                 src={currentEpisode.podcastArtwork}
-                alt=""
+                alt={currentEpisode.title}
+                width={52}
+                height={52}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
               />
             ) : (
@@ -97,7 +103,7 @@ export default function PlayerBar() {
               e.stopPropagation();
               togglePlay();
             }}
-            className="w-13 h-13 sm:w-14 sm:h-14 flex items-center justify-center bg-gradient-to-tr from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl shadow-lg shadow-purple-600/40 transition active:scale-90"
+            className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-gradient-to-tr from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl shadow-lg shadow-purple-600/40 transition active:scale-90"
             title={isPlaying ? 'Pause' : 'Lecture'}
           >
             {isLoadingAudio ? (

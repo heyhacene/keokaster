@@ -59,6 +59,13 @@ export default function AppUpdateNotifier() {
           target="_blank"
           rel="noopener noreferrer"
           download
+          onClick={(e) => {
+            if (typeof window !== 'undefined') {
+              try {
+                window.open(release.downloadUrl, '_system');
+              } catch {}
+            }
+          }}
           className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-transform active:scale-95 flex items-center gap-1.5"
         >
           <Download className="w-3.5 h-3.5" />

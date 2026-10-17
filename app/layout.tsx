@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { PlayerProvider } from '@/lib/playerContext';
 import Navbar from '@/components/Navbar';
@@ -10,6 +10,13 @@ import AppUpdateNotifier from '@/components/AppUpdateNotifier';
 export const metadata: Metadata = {
   title: 'Keo Kaster — Podcasts Libres & Anti-Pub',
   description: 'Lecteur de podcasts moderne, synchronisé et sans coupures publicitaires.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

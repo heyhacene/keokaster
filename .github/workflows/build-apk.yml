@@ -87,7 +87,19 @@ jobs:
           ./gradlew assembleRelease --stacktrace
 
           KEYSTORE_FILE="keokaster-release.keystore"
-          if [ ! -f "$KEYSTORE_FILE" ]; then
+          if [ -f "../keokaster.keystore" ]; then
+            echo "🔑 Utilisation du keystore fixe et permanent keokaster.keystore..."
+            cp "../keokaster.keystore" "$KEYSTORE_FILE"
+            ALIAS=$(keytool -list -keystore "$KEYSTORE_FILE" -storepass keokaster2026 | grep -E "PrivateKeyEntry|clé privée" | head -n 1 | cut -d',' -f1 | cut -d' ' -f1 | tr -d '\r' | tr -d ' ')
+            if [ -z "$ALIAS" ]; then
+              ALIAS=$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass keokaster2026 | grep -i "alias" | head -n 1 | awk -F': ' '{print $2}' | tr -d '\r' | tr -d ' ')
+            fi
+            if [ -z "$ALIAS" ]; then
+              ALIAS="keokaster"
+            fi
+            echo "🔑 Alias détecté : $ALIAS"
+          else
+            echo "⚠️ Création d'un nouveau keystore de secours..."
             keytool -genkeypair -v \
               -keystore "$KEYSTORE_FILE" \
               -alias keokaster \
@@ -97,6 +109,7 @@ jobs:
               -storepass keokaster2026 \
               -keypass keokaster2026 \
               -dname "CN=Keo Kaster, OU=Keo, O=Keo, L=Paris, ST=IDF, C=FR"
+            ALIAS="keokaster"
           fi
 
           APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools $ANDROID_HOME/build-tools /usr/local/lib/android/sdk/build-tools -name apksigner 2>/dev/null | sort -V | tail -n 1)
@@ -114,7 +127,7 @@ jobs:
           mkdir -p ../build-output
           $APKSIGNER sign \
             --ks "$KEYSTORE_FILE" \
-            --ks-key-alias keokaster \
+            --ks-key-alias "$ALIAS" \
             --ks-pass "pass:keokaster2026" \
             --key-pass "pass:keokaster2026" \
             --v1-signing-enabled true \
