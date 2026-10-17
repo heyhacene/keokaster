@@ -1,0 +1,17 @@
+{
+  "name": "Keo Kaster",
+  "short_name": "Keo Kaster",
+  "description": "Lecteur de podcasts moderne, synchronisé et sans coupures publicitaires.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#7e22ce",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
