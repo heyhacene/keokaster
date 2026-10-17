@@ -267,11 +267,11 @@ export default function FullPlayerModal() {
         <div className="w-full grid grid-cols-2 gap-3 mb-4">
           <button
             type="button"
-            onClick={() => skipAdNow(30)}
+            onClick={() => skipAdNow(60)}
             className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/50 text-amber-300 text-sm font-extrabold flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-amber-950/30"
           >
             <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />
-            <span>Sauter pub (+30s)</span>
+            <span>Sauter pub (+60s)</span>
           </button>
 
           <button

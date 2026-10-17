@@ -9,7 +9,7 @@ export interface LatestApkRelease {
 }
 
 export const CURRENT_KASTER_BUILD = parseInt(
-  process.env.NEXT_PUBLIC_BUILD_NUMBER || '7',
+  process.env.NEXT_PUBLIC_BUILD_NUMBER || '8',
   10
 );
 

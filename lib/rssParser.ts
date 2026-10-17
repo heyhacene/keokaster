@@ -80,7 +80,12 @@ export async function parsePodcastRss(xmlText: string, feedUrl: string): Promise
   }
 
   const getTagText = (parent: Element, tagName: string): string => {
-    const el = parent.querySelector(tagName);
+    let el = parent.querySelector(tagName);
+    if (!el && tagName.includes('\\:')) {
+      const rawTag = tagName.replace('\\:', ':');
+      const localName = tagName.split('\\:')[1];
+      el = parent.getElementsByTagName(rawTag)[0] || parent.getElementsByTagName(localName)[0];
+    }
     return el?.textContent?.trim() || '';
   };
 
@@ -96,6 +101,7 @@ export async function parsePodcastRss(xmlText: string, feedUrl: string): Promise
 
   let podcastArtwork =
     channel.querySelector('itunes\\:image')?.getAttribute('href') ||
+    channel.getElementsByTagName('itunes:image')[0]?.getAttribute('href') ||
     channel.querySelector('image url')?.textContent?.trim() ||
     '';
 
@@ -127,11 +133,16 @@ export async function parsePodcastRss(xmlText: string, feedUrl: string): Promise
       cleanHtml(getTagText(item, 'itunes\\:summary')) ||
       cleanHtml(getTagText(item, 'description'));
     const epPubDate = getTagText(item, 'pubDate') || new Date().toISOString();
-    const epDurationStr = getTagText(item, 'itunes\\:duration');
+    const epDurationStr =
+      getTagText(item, 'itunes\\:duration') ||
+      item.getElementsByTagName('itunes:duration')[0]?.textContent?.trim() ||
+      item.getElementsByTagName('duration')[0]?.textContent?.trim() ||
+      '';
     const epDurationSec = parseDuration(epDurationStr);
 
     const epArtwork =
       item.querySelector('itunes\\:image')?.getAttribute('href') ||
+      item.getElementsByTagName('itunes:image')[0]?.getAttribute('href') ||
       podcastArtwork;
 
     // Détection des chapitres textuels

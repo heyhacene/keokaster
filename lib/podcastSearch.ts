@@ -150,8 +150,12 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     ];
   }
 
+  // Normalisation des nombres ordinaux (ex: "1000ème" -> "1000") pour optimiser l'index iTunes
+  const simplifiedQuery = cleanQuery.replace(/(\d+)(?:[èe]me|er|ère|e)\b/gi, '$1');
+  const itunesQuery = simplifiedQuery !== cleanQuery ? `${cleanQuery} ${simplifiedQuery}` : cleanQuery;
+
   // Requête iTunes avec terme nettoyé
-  const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=podcast&country=FR&limit=50`;
+  const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(itunesQuery)}&entity=podcast&country=FR&limit=50`;
   let data: any = null;
 
   // 1. Essai avec fetch direct
@@ -178,7 +182,12 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
 
   if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
     const normQuery = normalizeText(cleanQuery);
+    const normSimplified = normalizeText(simplifiedQuery);
     const qWords = normQuery.split(' ').filter(Boolean);
+
+    // Mots vides en français (ne doivent jamais justifier à eux seuls un résultat positif)
+    const STOP_WORDS = new Set(['le', 'la', 'les', 'un', 'une', 'de', 'du', 'des', 'en', 'au', 'aux', 'a', 'et', 'dans', 'sur', 'pour', 'par']);
+    const significantWords = qWords.filter((w) => !STOP_WORDS.has(w) && w.length > 1);
 
     const items = data.results
       .filter((r: any) => r.feedUrl) // Uniquement avec flux RSS
@@ -189,27 +198,28 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
         const normTitle = normalizeText(title);
         const normAuthor = normalizeText(author);
 
-        const exactMatch = normTitle === normQuery;
-        const startsWith = normTitle.startsWith(normQuery);
-        const containsPhrase = normTitle.includes(normQuery);
+        const exactMatch = normTitle === normQuery || normTitle === normSimplified;
+        const startsWith = normTitle.startsWith(normQuery) || normTitle.startsWith(normSimplified);
+        const containsPhrase = normTitle.includes(normQuery) || (normSimplified && normTitle.includes(normSimplified));
 
-        let matchedWords = 0;
-        for (const w of qWords) {
+        let matchedSignificant = 0;
+        for (const w of significantWords) {
           const wordRegex = new RegExp(`(^|\\s)${w}`, 'i');
           if (wordRegex.test(normTitle) || normTitle.includes(w)) {
-            matchedWords++;
+            matchedSignificant++;
           }
         }
-        const allWordsMatch = qWords.length > 0 && matchedWords >= qWords.length;
+
+        const allSignificantMatch = significantWords.length > 0 && matchedSignificant >= significantWords.length;
+        const hasAnySignificant = significantWords.length === 0 || matchedSignificant > 0;
 
         let score = 0;
-        if (exactMatch) score += 25000;
+        if (exactMatch) score += 30000;
         if (startsWith) score += 15000;
         if (containsPhrase) score += 8000;
-        if (allWordsMatch) score += 4000;
-        score += matchedWords * 500;
-        if (normAuthor.includes(normQuery)) score += 1200;
-        if (/[éèêëàâîïôûùç]/i.test(title) || /[éèêëàâîïôûùç]/i.test(author)) score += 600;
+        if (allSignificantMatch) score += 5000;
+        score += matchedSignificant * 1000;
+        if (normAuthor.includes(normQuery)) score += 1500;
 
         return {
           id: canonicalId,
@@ -222,21 +232,24 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
           episodeCount: r.trackCount,
           _score: score,
           _containsPhrase: containsPhrase,
-          _allWordsMatch: allWordsMatch,
+          _allSignificantMatch: allSignificantMatch,
+          _hasAnySignificant: hasAnySignificant,
         };
-      });
+      })
+      // ÉLIMINATION STRICTE : Tout podcast qui ne contient aucun des mots significatifs est rejeté d'office !
+      .filter((i: any) => i._hasAnySignificant);
 
-    // 1. Priorité absolue : les podcasts contenant la phrase complète (élimine tous les podcasts russes / allemands hors sujet !)
+    // 1. Priorité absolue : les podcasts contenant la phrase complète
     const phraseMatches = items.filter((i: any) => i._containsPhrase);
     let finalList: any[] = [];
 
     if (phraseMatches.length > 0) {
       finalList = phraseMatches;
     } else {
-      // 2. Sinon, les podcasts contenant tous les mots de la recherche
-      const allWordMatches = items.filter((i: any) => i._allWordsMatch);
-      if (allWordMatches.length > 0) {
-        finalList = allWordMatches;
+      // 2. Sinon, les podcasts contenant tous les mots significatifs
+      const allSigMatches = items.filter((i: any) => i._allSignificantMatch);
+      if (allSigMatches.length > 0) {
+        finalList = allSigMatches;
       } else {
         // 3. En dernier recours, les meilleurs scores
         finalList = items.filter((i: any) => i._score > 0);
@@ -247,7 +260,7 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     finalList.sort((a: any, b: any) => b._score - a._score);
 
     // Limiter aux 15 meilleurs résultats pour ne jamais submerger l'utilisateur de pochettes inutiles
-    return finalList.slice(0, 15).map(({ _score, _containsPhrase, _allWordsMatch, ...item }: any) => item);
+    return finalList.slice(0, 15).map(({ _score, _containsPhrase, _allSignificantMatch, _hasAnySignificant, ...item }: any) => item);
   }
 
   // 3. Fallback local uniquement si le terme correspond à nos flux préenregistrés

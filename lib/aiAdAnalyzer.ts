@@ -137,26 +137,38 @@ export function analyzeEpisodeAdsWithAI(
   }
 
   // 4. Détection IA des encarts Dynamic Ad Insertion (DAI)
-  // Les plateformes Megaphone, Acast, Ausha, Audiomeans et Art19 injectent des blocs de pub pré-roll
+  // Megaphone, Acast, Ausha, Audiomeans, Art19 injectent quasi systématiquement 45s à 60s de pub pré-roll
   const isDaiPlatform = /(megaphone\.fm|acast\.com|ausha\.co|audiomeans\.fr|art19\.com|anchor\.fm)/i.test(episode.audioUrl);
   
-  if (isDaiPlatform && introSkipSec > 0 && episode.durationSec > introSkipSec * 3) {
-    // Si aucun segment pré-roll n'a encore été identifié
+  if (isDaiPlatform && introSkipSec > 0) {
     const hasPreRoll = segments.some((s) => s.startTime < 15);
     if (!hasPreRoll) {
+      // Pour les plateformes DAI connues, la pub pré-roll fait au moins 45s à 60s
+      const daiPreRollDuration = Math.max(introSkipSec, 45);
       const sponsorBrand = detectedSponsors[0] ? ` (${detectedSponsors[0]})` : '';
       segments.push({
         id: `ai-dai-preroll-${episode.id}`,
         startTime: 0,
+        endTime: daiPreRollDuration,
+        type: 'intro',
+        label: `⚡ Coupure IA : Tunnel publicitaire DAI${sponsorBrand}`,
+      });
+    }
+  } else if (introSkipSec > 0) {
+    const hasPreRoll = segments.some((s) => s.startTime < 15);
+    if (!hasPreRoll) {
+      segments.push({
+        id: `ai-intro-${episode.id}`,
+        startTime: 0,
         endTime: introSkipSec,
         type: 'intro',
-        label: `⚡ Coupure IA : Tunnel publicitaire pré-roll${sponsorBrand}`,
+        label: `⚡ Coupure IA : Intro / Sponsor (${introSkipSec}s)`,
       });
     }
   }
 
   // 5. Coupure automatique d'outro (autopromo, crédits sponsorisés finaux)
-  if (outroSkipSec > 0 && episode.durationSec > outroSkipSec * 3) {
+  if (outroSkipSec > 0 && episode.durationSec > outroSkipSec * 2) {
     const hasPostRoll = segments.some((s) => s.endTime >= episode.durationSec - 5);
     if (!hasPostRoll) {
       segments.push({

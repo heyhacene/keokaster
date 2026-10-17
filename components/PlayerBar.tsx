@@ -73,14 +73,14 @@ export default function PlayerBar() {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              skipAdNow(30);
+              skipAdNow(60);
             }}
             className="px-3 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 hover:text-amber-100 border border-amber-500/40 text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm"
-            title="Sauter la pub (+30s)"
+            title="Sauter la pub (+60s)"
           >
             <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
             <span className="hidden sm:inline">Sauter pub</span>
-            <span className="font-mono">+30s</span>
+            <span className="font-mono">+60s</span>
           </button>
 
           {/* RECULER DE 10S */}

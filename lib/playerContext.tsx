@@ -414,11 +414,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Bouton "Sauter la pub (+30s)" ou segment
+  // Bouton "Sauter la pub (+60s)" ou segment
   const skipAdNow = useCallback(
-    (secondsToSkip = 30) => {
+    (secondsToSkip = 60) => {
       skipForward(secondsToSkip);
-      setLastSkippedAd({ label: `Pub sautée manuellement (+${secondsToSkip}s)`, timestamp: Date.now() });
+      recordAICutStats(secondsToSkip);
+      setLastSkippedAd({ label: `⚡ Pub passée (+${secondsToSkip}s)`, timestamp: Date.now() });
       setTimeout(() => setLastSkippedAd(null), 3000);
     },
     [skipForward]
