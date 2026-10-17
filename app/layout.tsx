@@ -6,6 +6,7 @@ import PlayerBar from '@/components/PlayerBar';
 import FullPlayerModal from '@/components/FullPlayerModal';
 import AdSkipBanner from '@/components/AdSkipBanner';
 import AppUpdateNotifier from '@/components/AppUpdateNotifier';
+import AndroidBackHandler from '@/components/AndroidBackHandler';
 
 export const metadata: Metadata = {
   title: 'Keo Kaster — Podcasts Libres & Anti-Pub',
@@ -36,6 +37,7 @@ export default function RootLayout({
           </main>
           <PlayerBar />
           <FullPlayerModal />
+          <AndroidBackHandler />
         </PlayerProvider>
       </body>
     </html>

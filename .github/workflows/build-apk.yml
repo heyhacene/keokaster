@@ -46,6 +46,9 @@ jobs:
             npx cap add android
           fi
 
+      - name: Synchronisation Capacitor Android
+        run: npx cap sync android
+
       - name: Génération des icônes Android depuis le logo SVG
         run: |
           sudo apt-get update && sudo apt-get install -y librsvg2-bin
@@ -54,7 +57,9 @@ jobs:
           mkdir -p android/app/src/main/res/mipmap-xhdpi
           mkdir -p android/app/src/main/res/mipmap-xxhdpi
           mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p android/app/src/main/res/values
 
+          # 1. Icônes classiques et rondes
           rsvg-convert -w 48 -h 48 public/icon.svg -o android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           rsvg-convert -w 48 -h 48 public/icon.svg -o android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
           rsvg-convert -w 72 -h 72 public/icon.svg -o android/app/src/main/res/mipmap-hdpi/ic_launcher.png
@@ -66,8 +71,24 @@ jobs:
           rsvg-convert -w 192 -h 192 public/icon.svg -o android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           rsvg-convert -w 192 -h 192 public/icon.svg -o android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
 
-      - name: Synchronisation Capacitor Android
-        run: npx cap sync android
+          # 2. Icônes adaptatives Android 8+ (ic_launcher_foreground.png)
+          rsvg-convert -w 108 -h 108 public/icon.svg -o android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+          rsvg-convert -w 162 -h 162 public/icon.svg -o android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+          rsvg-convert -w 216 -h 216 public/icon.svg -o android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+          rsvg-convert -w 324 -h 324 public/icon.svg -o android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+          rsvg-convert -w 432 -h 432 public/icon.svg -o android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+
+          # 3. Fond adaptatif sombre aux couleurs de Keo Kaster (#0b0f19)
+          cat << 'EOF' > android/app/src/main/res/values/ic_launcher_background.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="ic_launcher_background">#0b0f19</color>
+          </resources>
+          EOF
+
+          if [ -f "android/app/src/main/res/values/colors.xml" ]; then
+            sed -i 's/<color name="ic_launcher_background">.*<\/color>/<color name="ic_launcher_background">#0b0f19<\/color>/g' android/app/src/main/res/values/colors.xml
+          fi
 
       - name: Configuration des permissions Android (Audio en arrière-plan et trafic HTTP)
         run: |

@@ -46,6 +46,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [subsMap, setSubsMap] = useState<Record<string, boolean>>({});
   const isFirstMount = useRef(true);
+  const searchSeqRef = useRef(0);
 
   const refreshSubs = () => {
     const subs = getSubscribedPodcasts();
@@ -88,9 +89,9 @@ export default function SearchPage() {
     }
   }, []);
 
-  // Recherche avec debounce
+  // Recherche réactive avec annulation des anciennes requêtes réseau
   useEffect(() => {
-    // Si la page vient d'être restaurée depuis le sessionStorage avec déjà des résultats, ne pas recharger inutilement
+    // Si la page vient d'être restaurée depuis le sessionStorage avec déjà des résultats, ne pas recharger
     if (isFirstMount.current) {
       isFirstMount.current = false;
       if (query.trim() && results.length > 0 && results !== TRENDING_PODCASTS) {
@@ -98,39 +99,66 @@ export default function SearchPage() {
       }
     }
 
-    if (!query.trim()) {
+    const trimmed = query.trim();
+    if (!trimmed) {
       setResults(TRENDING_PODCASTS);
       setLoading(false);
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('keokaster_search_query');
-        sessionStorage.removeItem('keokaster_search_results');
-        sessionStorage.removeItem('keokaster_search_scroll');
-      }
       return;
     }
 
+    if (trimmed.length < 2) {
+      setLoading(false);
+      setResults([]);
+      return;
+    }
+
+    const seq = ++searchSeqRef.current;
     setLoading(true);
+
     const timer = setTimeout(async () => {
       try {
-        const res = await searchPodcasts(query);
-        setResults(res);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('keokaster_search_query', query);
-          sessionStorage.setItem('keokaster_search_results', JSON.stringify(res));
+        const res = await searchPodcasts(trimmed);
+        if (seq === searchSeqRef.current) {
+          setResults(res);
+          setLoading(false);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('keokaster_search_query', trimmed);
+            sessionStorage.setItem('keokaster_search_results', JSON.stringify(res));
+          }
         }
       } catch (err) {
-        console.error('Erreur recherche podcast:', err);
-      } finally {
-        setLoading(false);
+        if (seq === searchSeqRef.current) {
+          console.error('Erreur recherche podcast:', err);
+          setLoading(false);
+        }
       }
-    }, 350);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [query]);
 
+  const handleInputChange = (val: string) => {
+    setQuery(val);
+    const trimmed = val.trim();
+    if (!trimmed) {
+      setResults(TRENDING_PODCASTS);
+      setLoading(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('keokaster_search_query');
+        sessionStorage.removeItem('keokaster_search_results');
+        sessionStorage.removeItem('keokaster_search_scroll');
+      }
+    } else {
+      // Nettoyage immédiat : AUCUN ancien résultat ou suggestion parasite ne subsiste à l'écran
+      setResults([]);
+      setLoading(true);
+    }
+  };
+
   const triggerImmediateSearch = async (searchTerm: string) => {
-    setQuery(searchTerm);
-    if (!searchTerm.trim()) {
+    const trimmed = searchTerm.trim();
+    setQuery(trimmed);
+    if (!trimmed) {
       setResults(TRENDING_PODCASTS);
       setLoading(false);
       if (typeof window !== 'undefined') {
@@ -141,22 +169,29 @@ export default function SearchPage() {
       return;
     }
 
+    const seq = ++searchSeqRef.current;
     setLoading(true);
+    setResults([]);
+
     try {
-      const res = await searchPodcasts(searchTerm);
-      setResults(res);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('keokaster_search_query', searchTerm);
-        sessionStorage.setItem('keokaster_search_results', JSON.stringify(res));
+      const res = await searchPodcasts(trimmed);
+      if (seq === searchSeqRef.current) {
+        setResults(res);
+        setLoading(false);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('keokaster_search_query', trimmed);
+          sessionStorage.setItem('keokaster_search_results', JSON.stringify(res));
+        }
       }
     } catch {
-      // ignore
-    } finally {
-      setLoading(false);
+      if (seq === searchSeqRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   const handleClear = () => {
+    searchSeqRef.current++;
     setQuery('');
     setResults(TRENDING_PODCASTS);
     setLoading(false);
@@ -188,6 +223,8 @@ export default function SearchPage() {
     }));
   };
 
+  const isShortQuery = query.trim().length > 0 && query.trim().length < 2;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div>
@@ -207,7 +244,7 @@ export default function SearchPage() {
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               triggerImmediateSearch(query);
@@ -292,6 +329,13 @@ export default function SearchPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : isShortQuery ? (
+          <div className="text-center py-12 bg-slate-900/30 rounded-3xl border border-slate-800/50 p-6 space-y-2">
+            <Search className="w-8 h-8 text-purple-400/60 mx-auto mb-2" />
+            <h3 className="text-xs font-semibold text-slate-300">
+              Tapez au moins 2 caractères pour lancer la recherche...
+            </h3>
           </div>
         ) : results.length === 0 ? (
           <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800/60 p-6 space-y-2">

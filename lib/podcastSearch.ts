@@ -125,6 +125,7 @@ function normalizeText(str: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    .replace(/(\d+)(?:eme|er|ere|e)\b/gi, '$1')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -195,10 +196,20 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
 
     // Mots vides en français (ne doivent jamais justifier à eux seuls un résultat positif)
     const STOP_WORDS = new Set(['le', 'la', 'les', 'un', 'une', 'de', 'du', 'des', 'en', 'au', 'aux', 'a', 'et', 'dans', 'sur', 'pour', 'par']);
-    const significantWords = qWords.filter((w) => !STOP_WORDS.has(w) && w.length > 1);
+    const significantWords = qWords.filter((w) => !STOP_WORDS.has(w) && (w.length > 1 || /\d/.test(w)));
+
+    const hasNonLatinQuery = /[^\u0000-\u024F]/.test(cleanQuery);
 
     const items = data.results
       .filter((r: any) => r.feedUrl) // Uniquement avec flux RSS
+      .filter((r: any) => {
+        const title = r.collectionName || r.trackName || '';
+        // Éliminer les spams de cours de langues nocturnes
+        if (/while you sleep|pendant ton sommeil|dorme|schlaf/i.test(title)) return false;
+        // Si l'utilisateur cherche en alphabet latin, filtrer les alphabets non-latins
+        if (!hasNonLatinQuery && /[^\u0000-\u024F\s\d.,!?'"-]/.test(title)) return false;
+        return true;
+      })
       .map((r: any) => {
         const canonicalId = getCanonicalPodcastId(r.feedUrl);
         const title = r.collectionName || r.trackName || '';
@@ -207,7 +218,7 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
         const normAuthor = normalizeText(author);
 
         const exactMatch = normTitle === normQuery || normTitle === normSimplified;
-        const startsWith = normTitle.startsWith(normQuery) || normTitle.startsWith(normSimplified);
+        const startsWith = normTitle.startsWith(normQuery) || (normSimplified && normTitle.startsWith(normSimplified));
         const containsPhrase = normTitle.includes(normQuery) || (normSimplified && normTitle.includes(normSimplified));
 
         let matchedSignificant = 0;
@@ -222,12 +233,12 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
         const hasAnySignificant = significantWords.length === 0 || matchedSignificant > 0;
 
         let score = 0;
-        if (exactMatch) score += 30000;
-        if (startsWith) score += 15000;
-        if (containsPhrase) score += 8000;
-        if (allSignificantMatch) score += 5000;
+        if (exactMatch) score += 35000;
+        if (startsWith) score += 20000;
+        if (containsPhrase) score += 10000;
+        if (allSignificantMatch) score += 6000;
         score += matchedSignificant * 1000;
-        if (normAuthor.includes(normQuery)) score += 1500;
+        if (normAuthor.includes(normQuery) || normAuthor.includes(normSimplified)) score += 2000;
 
         return {
           id: canonicalId,
@@ -240,6 +251,8 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
           episodeCount: r.trackCount,
           _score: score,
           _containsPhrase: containsPhrase,
+          _startsWith: startsWith,
+          _exactMatch: exactMatch,
           _allSignificantMatch: allSignificantMatch,
           _hasAnySignificant: hasAnySignificant,
         };
@@ -247,12 +260,12 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
       // ÉLIMINATION STRICTE : Tout podcast qui ne contient aucun des mots significatifs est rejeté d'office !
       .filter((i: any) => i._hasAnySignificant);
 
-    // 1. Priorité absolue : les podcasts contenant la phrase complète
-    const phraseMatches = items.filter((i: any) => i._containsPhrase);
+    // 1. Priorité absolue : les podcasts contenant la phrase complète ou commençant par la recherche
+    const strongMatches = items.filter((i: any) => i._score >= 15000 || i._containsPhrase);
     let finalList: any[] = [];
 
-    if (phraseMatches.length > 0) {
-      finalList = phraseMatches;
+    if (strongMatches.length > 0) {
+      finalList = strongMatches;
     } else {
       // 2. Sinon, les podcasts contenant tous les mots significatifs
       const allSigMatches = items.filter((i: any) => i._allSignificantMatch);
@@ -267,8 +280,8 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     // Tri par pertinence : le meilleur résultat en premier
     finalList.sort((a: any, b: any) => b._score - a._score);
 
-    // Limiter aux 15 meilleurs résultats pour ne jamais submerger l'utilisateur de pochettes inutiles
-    return finalList.slice(0, 15).map(({ _score, _containsPhrase, _allSignificantMatch, _hasAnySignificant, ...item }: any) => item);
+    // Limiter aux 10 meilleurs résultats pour ne jamais submerger l'utilisateur de pochettes parasites
+    return finalList.slice(0, 10).map(({ _score, _containsPhrase, _startsWith, _exactMatch, _allSignificantMatch, _hasAnySignificant, ...item }: any) => item);
   }
 
   // 3. Fallback local uniquement si le terme correspond à nos flux préenregistrés
