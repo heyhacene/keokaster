@@ -1,4 +1,5 @@
 import { Podcast, Episode, Chapter } from '@/types/podcast';
+import { getCanonicalPodcastId } from '@/lib/storage';
 
 function parseDuration(val: any): number {
   if (!val) return 0;
@@ -98,7 +99,7 @@ export async function parsePodcastRss(xmlText: string, feedUrl: string): Promise
     channel.querySelector('image url')?.textContent?.trim() ||
     '';
 
-  const podcastId = btoa(feedUrl).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
+  const podcastId = getCanonicalPodcastId(feedUrl);
 
   const podcast: Podcast = {
     id: podcastId,

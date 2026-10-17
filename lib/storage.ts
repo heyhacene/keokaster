@@ -8,6 +8,16 @@ const PLAYED_KEY = 'keokaster_played_v1';
 const AD_SETTINGS_KEY = 'keokaster_ad_settings_v1';
 const PODCAST_SETTINGS_KEY = 'keokaster_podcast_settings_v1';
 
+export function getCanonicalPodcastId(feedUrl: string): string {
+  if (!feedUrl) return '';
+  const clean = feedUrl.trim().replace(/\/+$/, '');
+  try {
+    return btoa(clean).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+  } catch {
+    return clean.replace(/[^a-zA-Z0-9]/g, '_').slice(-24);
+  }
+}
+
 export function getSubscribedPodcasts(): Podcast[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -25,21 +35,73 @@ export function saveSubscribedPodcasts(list: Podcast[]): void {
   } catch {}
 }
 
-export function isPodcastSubscribed(podcastId: string): boolean {
+export function isPodcastSubscribed(podcastIdOrFeedUrl: string): boolean {
+  if (!podcastIdOrFeedUrl) return false;
   const subs = getSubscribedPodcasts();
-  return subs.some((p) => p.id === podcastId);
+  const canonical = getCanonicalPodcastId(podcastIdOrFeedUrl);
+  return subs.some((p) => {
+    if (p.id === podcastIdOrFeedUrl) return true;
+    if (p.feedUrl && p.feedUrl === podcastIdOrFeedUrl) return true;
+    if (canonical && p.id === canonical) return true;
+    if (p.feedUrl && canonical && getCanonicalPodcastId(p.feedUrl) === canonical) return true;
+    return false;
+  });
 }
 
-export function togglePodcastSubscription(podcast: Podcast): boolean {
+export function togglePodcastSubscription(podcast: {
+  id?: string;
+  feedUrl: string;
+  title: string;
+  author?: string;
+  description?: string;
+  artworkUrl?: string;
+  categories?: string[];
+}): boolean {
   const subs = getSubscribedPodcasts();
-  const exists = subs.some((p) => p.id === podcast.id);
+  const canonical = getCanonicalPodcastId(podcast.feedUrl);
+  const targetId = podcast.id || canonical;
+
+  const exists = subs.some((p) => {
+    if (p.id === targetId) return true;
+    if (canonical && p.id === canonical) return true;
+    if (podcast.feedUrl && p.feedUrl === podcast.feedUrl) return true;
+    if (p.feedUrl && canonical && getCanonicalPodcastId(p.feedUrl) === canonical) return true;
+    return false;
+  });
+
   let updated: Podcast[];
   if (exists) {
-    updated = subs.filter((p) => p.id !== podcast.id);
+    updated = subs.filter((p) => {
+      if (p.id === targetId) return false;
+      if (canonical && p.id === canonical) return false;
+      if (podcast.feedUrl && p.feedUrl === podcast.feedUrl) return false;
+      if (p.feedUrl && canonical && getCanonicalPodcastId(p.feedUrl) === canonical) return false;
+      return true;
+    });
   } else {
-    updated = [{ ...podcast, isSubscribed: true }, ...subs];
+    const newSub: Podcast = {
+      id: canonical || targetId,
+      title: podcast.title,
+      author: podcast.author || 'Inconnu',
+      description: podcast.description || '',
+      feedUrl: podcast.feedUrl,
+      artworkUrl: podcast.artworkUrl || '',
+      categories: podcast.categories || [],
+      isSubscribed: true,
+    };
+    updated = [newSub, ...subs];
   }
+
   saveSubscribedPodcasts(updated);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('keokaster_subs_changed', {
+        detail: { podcastId: canonical, isSubscribed: !exists },
+      })
+    );
+  }
+
   return !exists;
 }
 

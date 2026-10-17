@@ -1,4 +1,5 @@
 import { Podcast } from '@/types/podcast';
+import { getCanonicalPodcastId } from '@/lib/storage';
 
 export interface SearchResultItem {
   id: string;
@@ -13,57 +14,66 @@ export interface SearchResultItem {
 
 export const TRENDING_PODCASTS: SearchResultItem[] = [
   {
-    id: 'itunes_1438676239',
-    title: 'HugoDécrypte - Les Actus du Jour',
+    id: getCanonicalPodcastId('https://feeds.acast.com/public/shows/95497e34-ecc2-596a-b910-bb3342918621'),
+    title: 'HugoDécrypte - Actus du Jour',
     author: 'HugoDécrypte',
     description: 'Chaque jour du lundi au vendredi, un résumé des actualités du jour en une dizaine de minutes.',
-    feedUrl: 'https://feed.ausha.co/B19bT9pQYV1o',
-    artworkUrl: 'https://images.ausha.co/k0j3QjB1i7l1i2q3/1700000000.jpg',
-    categories: ['Actualités', 'Politique', 'Société'],
+    feedUrl: 'https://feeds.acast.com/public/shows/95497e34-ecc2-596a-b910-bb3342918621',
+    artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/99/8f/f2/998ff2e2-df8b-3569-4624-13843d12c9e3/mza_14083435330052627150.jpeg/600x600bb.jpg',
+    categories: ['Actualités', 'Société', 'Politique'],
   },
   {
-    id: 'itunes_919904297',
+    id: getCanonicalPodcastId('https://radiofrance-podcast.net/podcast09/rss_13940.xml'),
     title: 'Affaires Sensibles',
     author: 'France Inter',
     description: 'Les grandes affaires, les aventures et les procès qui ont marqué les cinquante dernières années.',
     feedUrl: 'https://radiofrance-podcast.net/podcast09/rss_13940.xml',
-    artworkUrl: 'https://cdn.radiofrance.fr/s3/cruiser-production/2021/08/33ca441e-53c6-4d0d-9b7e-97621f31f9ee/1400x1400_carre_affaires_sensibles_inter_2021.jpg',
-    categories: ['Histoire', 'Société', 'Enquêtes'],
+    artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/63/70/8c/63708c3b-ed11-5d19-fa67-132f92e463f3/mza_8301076687401115427.jpg/600x600bb.jpg',
+    categories: ['Histoire', 'Enquêtes', 'Société'],
   },
   {
-    id: 'itunes_1207865201',
+    id: getCanonicalPodcastId('https://feeds.audiomeans.fr/feed/f02d124c-01fa-4ddc-a6fe-9363f52c58bc.xml'),
     title: 'Transfert',
-    author: 'Slate',
+    author: 'Slate.fr',
     description: 'Des histoires intimes, surprenantes, émouvantes racontées par ceux qui les ont vécues.',
-    feedUrl: 'https://rss.art19.com/transfert',
-    artworkUrl: 'https://content.production.cdn.art19.com/images/3f/63/07/fc/3f6307fc-9602-4217-b016-16a1c5d9e5b2/b43d3b4d4554c93540e118029c7d41f0f4244fbe1b3bfead5698b671239ce3d5e236359f42ce44057e937d949d01217e94be0df837482d8c3f25c765faea9ef8.jpeg',
+    feedUrl: 'https://feeds.audiomeans.fr/feed/f02d124c-01fa-4ddc-a6fe-9363f52c58bc.xml',
+    artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/3a/34/1f/3a341fd1-41ac-401b-2721-50e2245be56d/mza_7797341130086209673.png/600x600bb.jpg',
     categories: ['Société', 'Témoignages'],
   },
   {
-    id: 'itunes_1508216127',
+    id: getCanonicalPodcastId('https://feeds.acast.com/public/shows/43160adc-fadd-4764-b93f-aa1ca93f22bf'),
     title: 'Underscore_',
     author: 'Micode',
     description: 'Le talk-show tech et cyber où l’on décortique les histoires les plus folles d’Internet et de l’informatique.',
-    feedUrl: 'https://feed.ausha.co/7aP8T5b7K7V8',
-    artworkUrl: 'https://images.ausha.co/7aP8T5b7K7V8/1640000000.jpg',
+    feedUrl: 'https://feeds.acast.com/public/shows/43160adc-fadd-4764-b93f-aa1ca93f22bf',
+    artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/49/1b/52/491b523c-404c-9d8e-f810-beedcdd2d8b1/mza_12879556782584196351.jpeg/600x600bb.jpg',
     categories: ['Technologie', 'Internet', 'Culture Web'],
   },
   {
-    id: 'itunes_1483884877',
-    title: 'Légendes Urbaines',
-    author: 'RFI',
-    description: 'Musiques actuelles, hip-hop, afro et cultures urbaines francophones.',
-    feedUrl: 'https://www.rfi.fr/fr/podcasts/l%C3%A9gendes-urbaines/podcast',
-    artworkUrl: 'https://s.rfi.fr/media/display/d44cb25e-04f7-11ea-bb65-005056a99247/w:1400/p:1x1/RFI-PODCAST-Legend-Urb-1400X1400.jpg',
-    categories: ['Musique', 'Culture'],
+    id: getCanonicalPodcastId('https://feeds.acast.com/public/shows/5ffe3facad3e633276e9ea57'),
+    title: 'FloodCast',
+    author: 'Florent Bernard & Adrien Ménielle',
+    description: 'Discussions drôles, coulisses et invités autour d’un micro sans filtre.',
+    feedUrl: 'https://feeds.acast.com/public/shows/5ffe3facad3e633276e9ea57',
+    artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ee/3e/5b/ee3e5b9c-c278-aadf-89ad-822ba2819da3/mza_3496687179233588433.jpg/600x600bb.jpg',
+    categories: ['Humour', 'Comédie', 'Talk'],
   },
   {
-    id: 'itunes_1545068222',
+    id: getCanonicalPodcastId('https://feeds.acast.com/public/shows/68db9d2509b1c365e44318ca'),
+    title: "L'Heure du Monde",
+    author: 'Le Monde',
+    description: 'Un sujet d’actualité décortiqué chaque matin par la rédaction du Monde.',
+    feedUrl: 'https://feeds.acast.com/public/shows/68db9d2509b1c365e44318ca',
+    artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/09/b4/9f/09b49f13-4c73-2e89-5bdd-117a5a787623/mza_10769402460129893157.jpeg/600x600bb.jpg',
+    categories: ['Actualités', 'Grand Angle', 'Société'],
+  },
+  {
+    id: getCanonicalPodcastId('https://feeds.megaphone.fm/hubermanlab'),
     title: 'Huberman Lab',
     author: 'Scicomm Media',
     description: 'Science, neuroscience and health optimization tools for everyday life.',
     feedUrl: 'https://feeds.megaphone.fm/hubermanlab',
-    artworkUrl: 'https://megaphone.imgix.net/podcasts/11075678-3db4-11eb-98ff-872f2323a31c/image/Huberman_Lab_Podcast_Tile_1400x1400.png',
+    artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg',
     categories: ['Science', 'Santé', 'Psychologie'],
   },
 ];
@@ -74,14 +84,15 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
 
   // Si l'utilisateur colle directement une URL de flux RSS
   if (/^https?:\/\/.+\.(xml|rss)/i.test(cleanQuery) || cleanQuery.includes('/feed') || cleanQuery.includes('/rss')) {
+    const canonicalId = getCanonicalPodcastId(cleanQuery);
     return [
       {
-        id: 'custom_' + btoa(cleanQuery).slice(0, 12),
+        id: canonicalId,
         title: 'Flux RSS personnalisé',
         author: 'Flux direct',
         description: cleanQuery,
         feedUrl: cleanQuery,
-        artworkUrl: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=300',
+        artworkUrl: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=600',
         categories: ['Flux RSS'],
       },
     ];
@@ -99,16 +110,19 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
 
     return data.results
       .filter((r: any) => r.feedUrl) // Uniquement ceux avec un flux RSS exploitable
-      .map((r: any) => ({
-        id: String(r.collectionId || r.trackId),
-        title: r.collectionName || r.trackName,
-        author: r.artistName || 'Artiste inconnu',
-        description: r.collectionCensoredName || '',
-        feedUrl: r.feedUrl,
-        artworkUrl: r.artworkUrl600 || r.artworkUrl100 || '',
-        categories: r.genres || [r.primaryGenreName].filter(Boolean),
-        episodeCount: r.trackCount,
-      }));
+      .map((r: any) => {
+        const canonicalId = getCanonicalPodcastId(r.feedUrl);
+        return {
+          id: canonicalId,
+          title: r.collectionName || r.trackName,
+          author: r.artistName || 'Artiste inconnu',
+          description: r.collectionCensoredName || '',
+          feedUrl: r.feedUrl,
+          artworkUrl: r.artworkUrl600 || r.artworkUrl100 || '',
+          categories: r.genres || [r.primaryGenreName].filter(Boolean),
+          episodeCount: r.trackCount,
+        };
+      });
   } catch (err) {
     console.error('Erreur recherche podcast:', err);
     // Filtrage local en fallback

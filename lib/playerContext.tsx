@@ -61,8 +61,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isSeekingRef = useRef(false);
   const lastSkipTriggerRef = useRef(0);
+  const currentEpisodeRef = useRef<Episode | null>(null);
+  const adSegmentsRef = useRef<AdSegment[]>([]);
 
-  // Initialisation de l'élément Audio
+  // Synchronisation des refs
+  useEffect(() => {
+    currentEpisodeRef.current = currentEpisode;
+  }, [currentEpisode]);
+
+  useEffect(() => {
+    adSegmentsRef.current = adSegments;
+  }, [adSegments]);
+
+  // Initialisation de l'élément Audio - UNIQUE pour toute la durée de vie de l'app
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -78,14 +89,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const cur = audio.currentTime;
       setCurrentTime(cur);
 
+      const ep = currentEpisodeRef.current;
+      const segments = adSegmentsRef.current;
+
       // 1. Sauvegarder la position toutes les 2 secondes
-      if (currentEpisode && Math.floor(cur) % 2 === 0) {
-        savePlaybackPosition(currentEpisode.id, cur);
+      if (ep && Math.floor(cur) % 2 === 0) {
+        savePlaybackPosition(ep.id, cur);
       }
 
       // 2. MOTEUR ANTI-PUB KEO KASTER : Détection et saut automatique
-      if (adSegments.length > 0) {
-        const check = checkAdSkip(cur, adSegments);
+      if (segments.length > 0) {
+        const check = checkAdSkip(cur, segments);
         // Éviter de reboucler en boucle sur la même pub
         if (check.shouldSkip && check.seekTargetSec && Date.now() - lastSkipTriggerRef.current > 1500) {
           lastSkipTriggerRef.current = Date.now();
@@ -107,8 +121,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const onEnded = () => {
       setIsPlaying(false);
       setIsLoadingAudio(false);
-      if (currentEpisode) {
-        markEpisodePlayed(currentEpisode.id, true);
+      const ep = currentEpisodeRef.current;
+      if (ep) {
+        markEpisodePlayed(ep.id, true);
       }
       playNextInQueue();
     };
@@ -139,6 +154,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       audio.pause();
+      audio.src = '';
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('ended', onEnded);
@@ -149,7 +165,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener('canplay', onCanPlay);
       audio.removeEventListener('error', onError);
     };
-  }, [currentEpisode, adSegments]);
+  }, []); // Singleton garanti : tableau de dépendance vide
 
   // Synchronisation avec MediaSession (Écran de verrouillage Android / notifications)
   useEffect(() => {
@@ -202,16 +218,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [sleepTimerRemainingSec]);
 
-  // Lancer un épisode
+  // Lancer un épisode de manière exclusive (un seul podcast à la fois)
   const playEpisode = useCallback(
     (ep: Episode) => {
       const audio = audioRef.current;
       if (!audio) return;
 
       // Si c'est déjà l'épisode en cours, on bascule simplement Play/Pause
-      if (currentEpisode?.id === ep.id) {
-        if (isPlaying) {
+      if (currentEpisodeRef.current?.id === ep.id) {
+        if (!audio.paused) {
           audio.pause();
+          setIsPlaying(false);
         } else {
           setIsLoadingAudio(true);
           audio.play().then(() => {
@@ -226,14 +243,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Arrêt immédiat et inconditionnel de tout flux en cours
+      try {
+        audio.pause();
+      } catch {}
+
       const pSettings = getPodcastSettings(ep.podcastId);
       const gSettings = getGlobalAdSettings();
 
       // Construction des segments publicitaires à sauter
       const segments = buildAdSegments(ep.id, ep.durationSec, ep.chapters, pSettings, gSettings);
       setAdSegments(segments);
+      adSegmentsRef.current = segments;
 
       setCurrentEpisode(ep);
+      currentEpisodeRef.current = ep;
       setIsLoadingAudio(true);
       setIsPlaying(false);
       setCurrentTime(0);
@@ -278,14 +302,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       audio.addEventListener('canplay', onReadyToPlay, { once: true });
       audio.addEventListener('loadeddata', onReadyToPlay, { once: true });
     },
-    [currentEpisode, isPlaying, speed]
+    [speed]
   );
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (isPlaying) {
+    if (!audio.paused) {
       audio.pause();
+      setIsPlaying(false);
     } else {
       setIsLoadingAudio(true);
       audio.play().then(() => {
@@ -297,10 +322,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(false);
       });
     }
-  }, [isPlaying]);
+  }, []);
 
   const pause = useCallback(() => {
-    audioRef.current?.pause();
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      setIsPlaying(false);
+    }
   }, []);
 
   const resume = useCallback(() => {

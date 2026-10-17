@@ -61,7 +61,7 @@ function PodcastContent() {
         const { podcast: p, episodes: eps } = await fetchAndParsePodcast(feedUrl!);
         setPodcast(p);
         setEpisodes(eps);
-        setIsSubscribed(isPodcastSubscribed(p.id));
+        setIsSubscribed(isPodcastSubscribed(p.id) || isPodcastSubscribed(p.feedUrl));
         setSettings(getPodcastSettings(p.id));
       } catch (err: any) {
         setError(err.message || 'Impossible de charger les épisodes de ce podcast.');
@@ -72,6 +72,15 @@ function PodcastContent() {
 
     load();
   }, [feedUrl]);
+
+  useEffect(() => {
+    if (!podcast) return;
+    const onSubsChanged = () => {
+      setIsSubscribed(isPodcastSubscribed(podcast.id) || isPodcastSubscribed(podcast.feedUrl));
+    };
+    window.addEventListener('keokaster_subs_changed', onSubsChanged);
+    return () => window.removeEventListener('keokaster_subs_changed', onSubsChanged);
+  }, [podcast]);
 
   const handleToggleSub = () => {
     if (!podcast) return;

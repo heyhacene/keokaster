@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { TRENDING_PODCASTS, SearchResultItem } from '@/lib/podcastSearch';
 import PodcastCard from '@/components/PodcastCard';
 import { usePlayer } from '@/lib/playerContext';
-import { getSubscribedPodcasts, togglePodcastSubscription, isPodcastSubscribed } from '@/lib/storage';
+import { getSubscribedPodcasts, togglePodcastSubscription, isPodcastSubscribed, getCanonicalPodcastId } from '@/lib/storage';
 import { Radio, Zap, Play, Rss, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -15,13 +15,23 @@ export default function HomePage() {
   const [rssInput, setRssInput] = useState('');
   const [subsMap, setSubsMap] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
+  const refreshSubs = () => {
     const subs = getSubscribedPodcasts();
     const map: Record<string, boolean> = {};
     subs.forEach((s) => {
       map[s.id] = true;
+      if (s.feedUrl) {
+        map[s.feedUrl] = true;
+        map[getCanonicalPodcastId(s.feedUrl)] = true;
+      }
     });
     setSubsMap(map);
+  };
+
+  useEffect(() => {
+    refreshSubs();
+    window.addEventListener('keokaster_subs_changed', refreshSubs);
+    return () => window.removeEventListener('keokaster_subs_changed', refreshSubs);
   }, []);
 
   const handleCustomRssSubmit = (e: React.FormEvent) => {
@@ -32,6 +42,7 @@ export default function HomePage() {
 
   const handleToggleSub = (p: SearchResultItem, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const isNowSub = togglePodcastSubscription({
       id: p.id,
       title: p.title,
@@ -41,7 +52,13 @@ export default function HomePage() {
       artworkUrl: p.artworkUrl,
       categories: p.categories,
     });
-    setSubsMap((prev) => ({ ...prev, [p.id]: isNowSub }));
+    const cId = getCanonicalPodcastId(p.feedUrl);
+    setSubsMap((prev) => ({
+      ...prev,
+      [p.id]: isNowSub,
+      [p.feedUrl]: isNowSub,
+      [cId]: isNowSub,
+    }));
   };
 
   return (

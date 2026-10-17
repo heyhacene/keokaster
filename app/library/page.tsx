@@ -15,11 +15,15 @@ export default function LibraryPage() {
   const { queue, removeFromQueue } = usePlayer();
 
   useEffect(() => {
-    setSubscriptions(getSubscribedPodcasts());
+    const update = () => setSubscriptions(getSubscribedPodcasts());
+    update();
+    window.addEventListener('keokaster_subs_changed', update);
+    return () => window.removeEventListener('keokaster_subs_changed', update);
   }, []);
 
   const handleToggleSub = (p: Podcast, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     togglePodcastSubscription(p);
     setSubscriptions(getSubscribedPodcasts());
   };

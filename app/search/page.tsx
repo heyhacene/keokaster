@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { searchPodcasts, SearchResultItem, TRENDING_PODCASTS } from '@/lib/podcastSearch';
 import PodcastCard from '@/components/PodcastCard';
-import { getSubscribedPodcasts, togglePodcastSubscription } from '@/lib/storage';
+import { getSubscribedPodcasts, togglePodcastSubscription, getCanonicalPodcastId } from '@/lib/storage';
 import { Search, Loader2, Radio, Sparkles } from 'lucide-react';
 
 const CATEGORY_TAGS = [
@@ -25,13 +25,23 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [subsMap, setSubsMap] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
+  const refreshSubs = () => {
     const subs = getSubscribedPodcasts();
     const map: Record<string, boolean> = {};
     subs.forEach((s) => {
       map[s.id] = true;
+      if (s.feedUrl) {
+        map[s.feedUrl] = true;
+        map[getCanonicalPodcastId(s.feedUrl)] = true;
+      }
     });
     setSubsMap(map);
+  };
+
+  useEffect(() => {
+    refreshSubs();
+    window.addEventListener('keokaster_subs_changed', refreshSubs);
+    return () => window.removeEventListener('keokaster_subs_changed', refreshSubs);
   }, []);
 
   const handleSearch = async (searchTerm: string) => {
@@ -52,6 +62,7 @@ export default function SearchPage() {
 
   const handleToggleSub = (p: SearchResultItem, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const isNowSub = togglePodcastSubscription({
       id: p.id,
       title: p.title,
@@ -61,7 +72,13 @@ export default function SearchPage() {
       artworkUrl: p.artworkUrl,
       categories: p.categories,
     });
-    setSubsMap((prev) => ({ ...prev, [p.id]: isNowSub }));
+    const cId = getCanonicalPodcastId(p.feedUrl);
+    setSubsMap((prev) => ({
+      ...prev,
+      [p.id]: isNowSub,
+      [p.feedUrl]: isNowSub,
+      [cId]: isNowSub,
+    }));
   };
 
   return (
