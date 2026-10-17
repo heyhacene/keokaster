@@ -45,6 +45,8 @@ interface PlayerContextType {
   addToQueue: (episode: Episode) => void;
   removeFromQueue: (episodeId: string) => void;
   playNextInQueue: () => void;
+  playSeries: (seriesEpisodes: Episode[]) => void;
+  enqueueSeries: (seriesEpisodes: Episode[]) => void;
   openFullPlayer: () => void;
   closeFullPlayer: () => void;
 }
@@ -470,6 +472,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
   }, [playEpisode]);
 
+  const playSeries = useCallback(
+    (seriesEpisodes: Episode[]) => {
+      if (!seriesEpisodes || seriesEpisodes.length === 0) return;
+      const [first, ...rest] = seriesEpisodes;
+      // Remplace la file par le reste de la saga dans l'ordre
+      setQueueState(rest);
+      saveQueue(rest);
+      // Lance immédiatement le 1er épisode
+      playEpisode(first);
+    },
+    [playEpisode]
+  );
+
+  const enqueueSeries = useCallback((seriesEpisodes: Episode[]) => {
+    if (!seriesEpisodes || seriesEpisodes.length === 0) return;
+    setQueueState((prev) => {
+      const existingIds = new Set(prev.map((e) => e.id));
+      const toAdd = seriesEpisodes.filter((e) => !existingIds.has(e.id));
+      const updated = [...prev, ...toAdd];
+      saveQueue(updated);
+      return updated;
+    });
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -499,6 +525,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         addToQueue,
         removeFromQueue,
         playNextInQueue,
+        playSeries,
+        enqueueSeries,
         openFullPlayer: () => setIsFullPlayerOpen(true),
         closeFullPlayer: () => setIsFullPlayerOpen(false),
       }}

@@ -3,7 +3,8 @@
 import React from 'react';
 import { Episode } from '@/types/podcast';
 import { usePlayer } from '@/lib/playerContext';
-import { Play, Pause, ListPlus, Zap, Loader2 } from 'lucide-react';
+import { Play, Pause, ListPlus, Zap, Loader2, Layers } from 'lucide-react';
+import { detectSeriesPart } from '@/lib/seriesDetector';
 
 interface EpisodeRowProps {
   episode: Episode;
@@ -33,6 +34,7 @@ export default function EpisodeRow({ episode, isPlayed = false }: EpisodeRowProp
   const isCurrent = currentEpisode?.id === episode.id;
   const isCurrentlyPlaying = isCurrent && isPlaying;
   const isCurrentlyBuffering = isCurrent && isLoadingAudio;
+  const seriesInfo = detectSeriesPart(episode.title);
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -90,6 +92,12 @@ export default function EpisodeRow({ episode, isPlayed = false }: EpisodeRowProp
           {episode.chapters && episode.chapters.length > 0 && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30">
               {episode.chapters.length} chapitres
+            </span>
+          )}
+          {seriesInfo.isSeries && (
+            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shadow-sm">
+              <Layers className="w-3 h-3 text-amber-400" />
+              <span>Partie {seriesInfo.badgeLabel}</span>
             </span>
           )}
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">

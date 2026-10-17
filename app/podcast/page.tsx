@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { fetchAndParsePodcast } from '@/lib/rssParser';
 import { Podcast, Episode, PodcastSettings } from '@/types/podcast';
@@ -12,6 +12,7 @@ import {
   savePodcastSettings,
 } from '@/lib/storage';
 import { usePlayer } from '@/lib/playerContext';
+import { detectSeriesGroups, sortEpisodes, SeriesGroup } from '@/lib/seriesDetector';
 import {
   Loader2,
   Plus,
@@ -21,11 +22,16 @@ import {
   ChevronDown,
   ChevronUp,
   Radio,
-  Share2,
   Play,
   Pause,
   ArrowLeft,
   Search as SearchIcon,
+  Layers,
+  ArrowDown,
+  ArrowUp,
+  ListOrdered,
+  CheckCircle2,
+  ListPlus,
 } from 'lucide-react';
 
 function PodcastContent() {
@@ -41,6 +47,9 @@ function PodcastContent() {
   const [showSettings, setShowSettings] = useState(false);
   const [episodeSearch, setEpisodeSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(30);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'series'>('newest');
+  const [activeSeriesIndex, setActiveSeriesIndex] = useState(0);
+  const [seriesToast, setSeriesToast] = useState<string | null>(null);
 
   const [settings, setSettings] = useState<PodcastSettings>({
     autoSkipIntroSec: 30,
@@ -48,10 +57,15 @@ function PodcastContent() {
     adBlockEnabled: true,
   });
 
-  const { currentEpisode, isPlaying, isLoadingAudio, playEpisode, togglePlay } = usePlayer();
-  const latestEpisode = episodes.length > 0 ? episodes[0] : null;
-  const isPlayingLatest = latestEpisode && currentEpisode?.id === latestEpisode.id && isPlaying;
-  const isBufferingLatest = latestEpisode && currentEpisode?.id === latestEpisode.id && isLoadingAudio;
+  const {
+    currentEpisode,
+    isPlaying,
+    isLoadingAudio,
+    playEpisode,
+    togglePlay,
+    playSeries,
+    enqueueSeries,
+  } = usePlayer();
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -76,7 +90,11 @@ function PodcastContent() {
         setPodcast(p);
         setEpisodes(eps);
         setIsSubscribed(isPodcastSubscribed(p.id) || isPodcastSubscribed(p.feedUrl));
-        setSettings(getPodcastSettings(p.id));
+        const pSettings = getPodcastSettings(p.id);
+        setSettings(pSettings);
+        if (pSettings.sortOrder) {
+          setSortOrder(pSettings.sortOrder);
+        }
       } catch (err: any) {
         setError(err.message || 'Impossible de charger les épisodes de ce podcast.');
       } finally {
@@ -109,16 +127,53 @@ function PodcastContent() {
     savePodcastSettings(podcast.id, next);
   };
 
-  const filteredEpisodes = episodes.filter((ep) => {
-    if (!episodeSearch.trim()) return true;
-    const term = episodeSearch.toLowerCase();
-    return (
-      ep.title.toLowerCase().includes(term) ||
-      ep.description.toLowerCase().includes(term)
-    );
-  });
+  const handleSortChange = (newOrder: 'newest' | 'oldest' | 'series') => {
+    setSortOrder(newOrder);
+    handleUpdateSettings({ sortOrder: newOrder });
+  };
+
+  // Détection automatique des sagas et séries multi-parties (1/4, 2/4...)
+  const detectedSeriesList: SeriesGroup[] = useMemo(() => {
+    return detectSeriesGroups(episodes);
+  }, [episodes]);
+
+  const activeSeries = detectedSeriesList[activeSeriesIndex] || detectedSeriesList[0];
+
+  const handlePlayActiveSeries = (grp: SeriesGroup) => {
+    if (!grp.episodes || grp.episodes.length === 0) return;
+    playSeries(grp.episodes);
+    setSeriesToast(`▶️ Lecture de la Partie 1 commencée ! Les ${grp.episodes.length - 1} parties suivantes enchaîneront dans l'ordre.`);
+    setTimeout(() => setSeriesToast(null), 5000);
+  };
+
+  const handleEnqueueActiveSeries = (grp: SeriesGroup) => {
+    if (!grp.episodes || grp.episodes.length === 0) return;
+    enqueueSeries(grp.episodes);
+    setSeriesToast(`➕ Les ${grp.episodes.length} épisodes ont été ajoutés dans l'ordre à votre file d'attente.`);
+    setTimeout(() => setSeriesToast(null), 4000);
+  };
+
+  // Liste ordonnée selon le tri sélectionné (Récents, Anciens, ou Séries 1➔4)
+  const sortedEpisodes = useMemo(() => {
+    return sortEpisodes(episodes, sortOrder);
+  }, [episodes, sortOrder]);
+
+  const filteredEpisodes = useMemo(() => {
+    return sortedEpisodes.filter((ep) => {
+      if (!episodeSearch.trim()) return true;
+      const term = episodeSearch.toLowerCase();
+      return (
+        ep.title.toLowerCase().includes(term) ||
+        ep.description.toLowerCase().includes(term)
+      );
+    });
+  }, [sortedEpisodes, episodeSearch]);
 
   const displayedEpisodes = filteredEpisodes.slice(0, visibleCount);
+
+  const latestEpisode = episodes.length > 0 ? episodes[0] : null;
+  const isPlayingLatest = latestEpisode && currentEpisode?.id === latestEpisode.id && isPlaying;
+  const isBufferingLatest = latestEpisode && currentEpisode?.id === latestEpisode.id && isLoadingAudio;
 
   if (loading) {
     return (
@@ -149,6 +204,14 @@ function PodcastContent() {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
+      {/* NOTIFICATION FLOTTANTE POUR SÉRIE */}
+      {seriesToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-2xl bg-purple-900/95 text-white text-xs font-bold shadow-2xl border border-purple-400/50 flex items-center gap-2.5 backdrop-blur-md animate-in slide-in-from-top-4 max-w-sm text-center">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{seriesToast}</span>
+        </div>
+      )}
+
       {/* BOUTON RETOUR HAUT DE PAGE */}
       <div className="flex items-center justify-between">
         <button
@@ -165,9 +228,9 @@ function PodcastContent() {
         </span>
       </div>
 
-      {/* EN-TÊTE DU PODCAST AVEC POCHETTE STRICTEMENT CONTRAINTE */}
+      {/* EN-TÊTE DU PODCAST */}
       <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-4 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-5 items-start">
-        {/* POCHETTE CARRÉE (STRICTEMENT CADRÉE CONTRE LES IMAGES 3000px) */}
+        {/* POCHETTE CARRÉE */}
         <div
           style={{
             width: '120px',
@@ -202,6 +265,12 @@ function PodcastContent() {
               <Zap className="w-2.5 h-2.5 fill-emerald-400" />
               <span>Anti-Pub Actif</span>
             </span>
+            {detectedSeriesList.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                <Layers className="w-2.5 h-2.5 text-amber-400" />
+                <span>{detectedSeriesList.length} saga(s) détectée(s)</span>
+              </span>
+            )}
           </div>
 
           <h1 className="text-lg sm:text-2xl font-extrabold text-white leading-tight">
@@ -235,7 +304,7 @@ function PodcastContent() {
                 ) : (
                   <Play className="w-4 h-4 fill-white ml-0.5" />
                 )}
-                <span>{isPlayingLatest ? 'Pause' : 'Écouter le dernier épisode'}</span>
+                <span>{isPlayingLatest ? 'Pause' : 'Dernier épisode'}</span>
               </button>
             )}
 
@@ -334,12 +403,139 @@ function PodcastContent() {
         </div>
       )}
 
-      {/* LISTE DES ÉPISODES AVEC RECHERCHE ET PAGINATION */}
+      {/* BANNIÈRE SÉRIE MULTI-PARTIES DÉTECTÉE (1/4, 2/4...) */}
+      {activeSeries && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-purple-950/40 border border-amber-500/40 shadow-xl space-y-3.5 animate-in slide-in-from-top-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/40 text-xs font-extrabold">
+              <Layers className="w-3.5 h-3.5 text-amber-400" />
+              <span>Série en plusieurs épisodes détectée</span>
+            </div>
+
+            {detectedSeriesList.length > 1 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400">Autre saga :</span>
+                {detectedSeriesList.map((s, idx) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setActiveSeriesIndex(idx)}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${
+                      activeSeriesIndex === idx
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Saga #{idx + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-sm sm:text-base font-extrabold text-white">
+              {activeSeries.title}
+            </h3>
+            <p className="text-xs text-amber-200/80 mt-0.5">
+              {activeSeries.episodes.length} volet(s) identifié(s) • Ordonnés automatiquement de la Partie 1 à {activeSeries.totalParts || activeSeries.episodes.length}
+            </p>
+          </div>
+
+          {/* APERÇU DES ÉPISODES DE LA SAGA */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 no-scrollbar">
+            {activeSeries.episodes.map((ep, idx) => (
+              <div
+                key={ep.id}
+                className="shrink-0 px-2.5 py-1.5 rounded-xl bg-slate-950/80 border border-amber-500/20 text-[11px] text-slate-300 flex items-center gap-1.5"
+                title={ep.title}
+              >
+                <span className="font-mono font-bold text-amber-400">
+                  Partie {idx + 1}/{activeSeries.totalParts || activeSeries.episodes.length}
+                </span>
+                <span className="truncate max-w-[120px] text-slate-400">
+                  {ep.title}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* BOUTONS D'ACTION POUR LA SAGA */}
+          <div className="pt-1 flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handlePlayActiveSeries(activeSeries)}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs transition flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95"
+            >
+              <Play className="w-4 h-4 fill-slate-950" />
+              <span>Écouter dans l'ordre (1 ➔ {activeSeries.totalParts || activeSeries.episodes.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleEnqueueActiveSeries(activeSeries)}
+              className="px-3.5 py-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/30 font-bold text-xs transition flex items-center gap-1.5 active:scale-95"
+            >
+              <ListPlus className="w-4 h-4 text-amber-400" />
+              <span>Ajouter toute la série à la file</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* LISTE DES ÉPISODES AVEC SÉLECTEUR D'ORDRE (RÉCENTS / ANCIENS / SÉRIES) */}
       <div className="space-y-3 pt-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800 pb-3">
-          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-            Épisodes ({filteredEpisodes.length}{filteredEpisodes.length !== episodes.length ? ` / ${episodes.length}` : ''})
-          </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+              Épisodes ({filteredEpisodes.length}{filteredEpisodes.length !== episodes.length ? ` / ${episodes.length}` : ''})
+            </h2>
+
+            {/* SÉLECTEUR DE CLASSEMENT AVEC GROS BOUTONS ERGONOMIQUES */}
+            <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleSortChange('newest')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  sortOrder === 'newest'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Afficher les plus récents en premier"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+                <span>Récents</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSortChange('oldest')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  sortOrder === 'oldest'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Afficher du premier au dernier (chronologique)"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+                <span>Anciens</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSortChange('series')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  sortOrder === 'series'
+                    ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm'
+                    : 'text-amber-400 hover:text-amber-300 hover:bg-slate-800'
+                }`}
+                title="Classer les épisodes en plusieurs parties dans l'ordre (1 ➔ 2 ➔ 3 ➔ 4)"
+              >
+                <ListOrdered className="w-3.5 h-3.5" />
+                <span>Séries (1➔4)</span>
+              </button>
+            </div>
+          </div>
 
           {episodes.length > 5 && (
             <div className="relative max-w-xs w-full">

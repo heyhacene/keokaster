@@ -38,6 +38,7 @@ export interface PodcastSettings {
   customSpeed?: number;
   adBlockEnabled: boolean;
   trimSilenceEnabled?: boolean;
+  sortOrder?: 'newest' | 'oldest' | 'series';
 }
 
 export interface Podcast {

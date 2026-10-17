@@ -5,7 +5,7 @@ import { TRENDING_PODCASTS, SearchResultItem } from '@/lib/podcastSearch';
 import PodcastCard from '@/components/PodcastCard';
 import { usePlayer } from '@/lib/playerContext';
 import { getSubscribedPodcasts, togglePodcastSubscription, isPodcastSubscribed, getCanonicalPodcastId } from '@/lib/storage';
-import { Radio, Zap, Play, Rss, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Radio, Zap, Play, Rss, ArrowRight, Sparkles, ShieldCheck, Library } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -14,9 +14,11 @@ export default function HomePage() {
   const { currentEpisode, isPlaying, togglePlay, openFullPlayer } = usePlayer();
   const [rssInput, setRssInput] = useState('');
   const [subsMap, setSubsMap] = useState<Record<string, boolean>>({});
+  const [subsCount, setSubsCount] = useState<number>(0);
 
   const refreshSubs = () => {
     const subs = getSubscribedPodcasts();
+    setSubsCount(subs.length);
     const map: Record<string, boolean> = {};
     subs.forEach((s) => {
       map[s.id] = true;
@@ -79,19 +81,31 @@ export default function HomePage() {
             Keo Kaster détecte automatiquement les sponsors, intros récurrentes et coupures publicitaires pour les sauter à la seconde près.
           </p>
 
-          <div className="pt-2 flex items-center gap-3">
+          <div className="pt-2 flex items-center gap-2.5 flex-wrap">
             <Link
               href="/search"
               className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-purple-600/30 active:scale-95"
             >
-              <span>Rechercher un podcast</span>
+              <span>Rechercher</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
-              href="/settings"
-              className="px-4 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-bold text-xs transition"
+              href="/library"
+              className="px-4 py-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 hover:text-white border border-purple-500/50 font-bold text-xs transition flex items-center gap-2 shadow-sm active:scale-95"
             >
-              Régler l'Anti-Pub
+              <Library className="w-4 h-4 text-purple-300" />
+              <span>Ma Bibliothèque</span>
+              {subsCount > 0 && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-500/40 text-white font-bold">
+                  {subsCount}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/settings"
+              className="px-3.5 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-bold text-xs transition"
+            >
+              Anti-Pub
             </Link>
           </div>
         </div>
@@ -100,6 +114,38 @@ export default function HomePage() {
         <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-purple-600/10 blur-3xl pointer-events-none" />
         <div className="absolute right-20 top-0 w-48 h-48 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
       </div>
+
+      {/* GROS BOUTON CARTE MA BIBLIOTHÈQUE */}
+      <Link
+        href="/library"
+        className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-950/40 via-slate-900/80 to-indigo-950/40 border border-purple-500/30 hover:border-purple-500/60 transition-all flex items-center justify-between gap-4 group shadow-xl active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 group-hover:scale-105 transition shadow-inner shrink-0">
+            <Library className="w-6 h-6 text-purple-400" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm sm:text-base font-extrabold text-white group-hover:text-purple-300 transition">
+                Ma Bibliothèque
+              </h3>
+              {subsCount > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  {subsCount} podcast{subsCount > 1 ? 's' : ''} suivi{subsCount > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">
+              Retrouvez tous vos abonnements et vos épisodes en attente
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600/20 group-hover:bg-purple-600 text-purple-300 group-hover:text-white text-xs font-bold transition shrink-0 border border-purple-500/30">
+          <span>Ouvrir</span>
+          <ArrowRight className="w-4 h-4" />
+        </div>
+      </Link>
 
       {/* REPRENDRE L'ÉCOUTE (SI UN ÉPISODE EST CHARGÉ) */}
       {currentEpisode && (
