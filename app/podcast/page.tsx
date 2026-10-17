@@ -11,6 +11,7 @@ import {
   getPodcastSettings,
   savePodcastSettings,
 } from '@/lib/storage';
+import { usePlayer } from '@/lib/playerContext';
 import {
   Loader2,
   Plus,
@@ -21,6 +22,8 @@ import {
   ChevronUp,
   Radio,
   Share2,
+  Play,
+  Pause,
 } from 'lucide-react';
 
 function PodcastContent() {
@@ -38,6 +41,11 @@ function PodcastContent() {
     autoSkipOutroSec: 30,
     adBlockEnabled: true,
   });
+
+  const { currentEpisode, isPlaying, isLoadingAudio, playEpisode, togglePlay } = usePlayer();
+  const latestEpisode = episodes.length > 0 ? episodes[0] : null;
+  const isPlayingLatest = latestEpisode && currentEpisode?.id === latestEpisode.id && isPlaying;
+  const isBufferingLatest = latestEpisode && currentEpisode?.id === latestEpisode.id && isLoadingAudio;
 
   useEffect(() => {
     if (!feedUrl) {
@@ -133,24 +141,47 @@ function PodcastContent() {
             {podcast.description}
           </p>
 
-          <div className="pt-2 flex items-center gap-2 flex-wrap">
+          <div className="pt-2 flex items-center gap-3 flex-wrap">
+            {latestEpisode && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentEpisode?.id === latestEpisode.id) {
+                    togglePlay();
+                  } else {
+                    playEpisode(latestEpisode);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 active:scale-95 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-600/30"
+              >
+                {isBufferingLatest ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                ) : isPlayingLatest ? (
+                  <Pause className="w-4 h-4 fill-white" />
+                ) : (
+                  <Play className="w-4 h-4 fill-white ml-0.5" />
+                )}
+                <span>{isPlayingLatest ? 'Pause' : 'Écouter le dernier épisode'}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleToggleSub}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-md ${
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-md ${
                 isSubscribed
                   ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
-                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
+                  : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
               }`}
             >
-              {isSubscribed ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+              {isSubscribed ? <Check className="w-3.5 h-3.5 text-purple-300" /> : <Plus className="w-3.5 h-3.5" />}
               <span>{isSubscribed ? 'Abonné' : "S'abonner"}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowSettings(!showSettings)}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 hover:text-white transition flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700/60"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span>Réglages Anti-Pub</span>

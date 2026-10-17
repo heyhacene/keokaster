@@ -15,6 +15,7 @@ import {
   ListMusic,
   Bookmark,
   Share2,
+  Loader2,
 } from 'lucide-react';
 
 function formatTime(seconds: number): string {
@@ -41,6 +42,7 @@ export default function FullPlayerModal() {
   const {
     currentEpisode,
     isPlaying,
+    isLoadingAudio,
     currentTime,
     duration,
     speed,
@@ -181,29 +183,32 @@ export default function FullPlayerModal() {
           </div>
         </div>
 
-        {/* COMMANDES PRINCIPALES */}
-        <div className="flex items-center justify-center gap-6 sm:gap-8 mb-6">
+        {/* COMMANDES PRINCIPALES - GROS BOUTONS ACCESSIBLES */}
+        <div className="flex items-center justify-center gap-6 sm:gap-10 mb-6">
           {/* -10S */}
           <button
             type="button"
             onClick={() => skipBackward(10)}
-            className="p-3 text-slate-300 hover:text-white rounded-2xl hover:bg-slate-900 transition active:scale-95 flex flex-col items-center"
+            className="w-16 h-16 rounded-3xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition active:scale-90 flex flex-col items-center justify-center shadow-md"
             title="Reculer de 10s"
           >
-            <RotateCcw className="w-6 h-6" />
-            <span className="text-[10px] font-mono mt-0.5">10s</span>
+            <RotateCcw className="w-7 h-7" />
+            <span className="text-[11px] font-mono font-bold mt-0.5">10s</span>
           </button>
 
-          {/* PLAY / PAUSE GÉANT */}
+          {/* PLAY / PAUSE GÉANT AVEC RETOUR CHARGEMENT */}
           <button
             type="button"
             onClick={togglePlay}
-            className="p-5 rounded-3xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white shadow-xl shadow-purple-600/30 transition transform active:scale-95"
+            className="w-22 h-22 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white shadow-2xl shadow-purple-600/40 transition-transform active:scale-90 flex items-center justify-center ring-4 ring-purple-500/20"
+            title={isPlaying ? 'Pause' : 'Lecture'}
           >
-            {isPlaying ? (
-              <Pause className="w-8 h-8 fill-white" />
+            {isLoadingAudio ? (
+              <Loader2 className="w-10 h-10 sm:w-11 sm:h-11 animate-spin text-white" />
+            ) : isPlaying ? (
+              <Pause className="w-10 h-10 sm:w-11 sm:h-11 fill-white" />
             ) : (
-              <Play className="w-8 h-8 fill-white ml-1" />
+              <Play className="w-10 h-10 sm:w-11 sm:h-11 fill-white ml-1.5" />
             )}
           </button>
 
@@ -211,32 +216,32 @@ export default function FullPlayerModal() {
           <button
             type="button"
             onClick={() => skipForward(30)}
-            className="p-3 text-slate-300 hover:text-white rounded-2xl hover:bg-slate-900 transition active:scale-95 flex flex-col items-center"
+            className="w-16 h-16 rounded-3xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition active:scale-90 flex flex-col items-center justify-center shadow-md"
             title="Avancer de 30s"
           >
-            <RotateCw className="w-6 h-6" />
-            <span className="text-[10px] font-mono mt-0.5">30s</span>
+            <RotateCw className="w-7 h-7" />
+            <span className="text-[11px] font-mono font-bold mt-0.5">30s</span>
           </button>
         </div>
 
         {/* BOUTONS DÉDIÉS DU MOTEUR ANTI-PUB */}
-        <div className="w-full grid grid-cols-2 gap-2 mb-4">
+        <div className="w-full grid grid-cols-2 gap-3 mb-4">
           <button
             type="button"
             onClick={() => skipAdNow(30)}
-            className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+            className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/50 text-amber-300 text-sm font-extrabold flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-amber-950/30"
           >
-            <Zap className="w-4 h-4 text-amber-400" />
+            <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />
             <span>Sauter pub (+30s)</span>
           </button>
 
           <button
             type="button"
             onClick={markCurrentTimeAsAd}
-            className="py-2.5 px-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+            className="py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-sm font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-md"
             title="Signale ce passage comme une pub pour qu'il soit sauté à jamais"
           >
-            <ShieldAlert className="w-4 h-4 text-purple-400" />
+            <ShieldAlert className="w-5 h-5 text-purple-400" />
             <span>Marquer pub</span>
           </button>
         </div>

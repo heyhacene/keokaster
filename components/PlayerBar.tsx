@@ -2,12 +2,13 @@
 
 import React from 'react';
 import { usePlayer } from '@/lib/playerContext';
-import { Play, Pause, Zap, FastForward, RotateCcw } from 'lucide-react';
+import { Play, Pause, Zap, FastForward, RotateCcw, RotateCw, Loader2 } from 'lucide-react';
 
 export default function PlayerBar() {
   const {
     currentEpisode,
     isPlaying,
+    isLoadingAudio,
     currentTime,
     duration,
     togglePlay,
@@ -22,27 +23,27 @@ export default function PlayerBar() {
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 shadow-2xl">
-      {/* BARRE DE PROGRESSION MINCE */}
-      <div className="w-full h-1 bg-slate-800 cursor-pointer">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 shadow-2xl">
+      {/* BARRE DE PROGRESSION */}
+      <div className="w-full h-1.5 bg-slate-800 cursor-pointer">
         <div
-          className="h-full bg-gradient-to-r from-purple-500 to-amber-500 transition-all duration-200"
+          className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-amber-500 transition-all duration-200"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
 
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-3">
         {/* INFOS DE L'ÉPISODE (CLIC POUR AGRANDIR) */}
         <div
           onClick={openFullPlayer}
-          className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+          className="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer group select-none"
         >
-          <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-800 shrink-0 border border-slate-700/60 shadow-xs relative">
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-slate-800 shrink-0 border border-slate-700/80 shadow-md relative">
             {currentEpisode.podcastArtwork ? (
               <img
                 src={currentEpisode.podcastArtwork}
                 alt=""
-                className="w-full h-full object-cover group-hover:scale-105 transition"
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-tr from-purple-800 to-indigo-900" />
@@ -50,17 +51,17 @@ export default function PlayerBar() {
           </div>
 
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-purple-300 transition">
+            <h4 className="text-sm font-bold text-white truncate group-hover:text-purple-300 transition">
               {currentEpisode.title}
             </h4>
-            <p className="text-[11px] text-slate-400 truncate">
+            <p className="text-xs text-slate-400 truncate mt-0.5">
               {currentEpisode.podcastTitle}
             </p>
           </div>
         </div>
 
-        {/* CONTRÔLES DE LECTURE & ANTI-PUB EN 1 CLIC */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* CONTRÔLES DE LECTURE & ANTI-PUB - GROS BOUTONS ACCESSIBLES */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* BOUTON SAUTER LA PUB IMMÉDIATEMENT */}
           <button
             type="button"
@@ -68,12 +69,12 @@ export default function PlayerBar() {
               e.stopPropagation();
               skipAdNow(30);
             }}
-            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-bold transition flex items-center gap-1 active:scale-95"
+            className="px-3 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 hover:text-amber-100 border border-amber-500/40 text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm"
             title="Sauter la pub (+30s)"
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
             <span className="hidden sm:inline">Sauter pub</span>
-            <span className="text-[10px] font-mono">+30s</span>
+            <span className="font-mono">+30s</span>
           </button>
 
           {/* RECULER DE 10S */}
@@ -83,23 +84,29 @@ export default function PlayerBar() {
               e.stopPropagation();
               skipBackward(10);
             }}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
+            className="p-3 text-slate-300 hover:text-white rounded-2xl hover:bg-slate-800 transition active:scale-90"
             title="Reculer de 10s"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-5 h-5" />
           </button>
 
-          {/* PLAY / PAUSE */}
+          {/* GROS BOUTON PLAY / PAUSE */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               togglePlay();
             }}
-            className="p-2.5 bg-gradient-to-tr from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl shadow-md shadow-purple-600/30 transition active:scale-95"
+            className="w-13 h-13 sm:w-14 sm:h-14 flex items-center justify-center bg-gradient-to-tr from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl shadow-lg shadow-purple-600/40 transition active:scale-90"
             title={isPlaying ? 'Pause' : 'Lecture'}
           >
-            {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
+            {isLoadingAudio ? (
+              <Loader2 className="w-6 h-6 animate-spin text-white" />
+            ) : isPlaying ? (
+              <Pause className="w-6 h-6 fill-white" />
+            ) : (
+              <Play className="w-6 h-6 fill-white ml-0.5" />
+            )}
           </button>
         </div>
       </div>

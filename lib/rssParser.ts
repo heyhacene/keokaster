@@ -136,7 +136,10 @@ export async function parsePodcastRss(xmlText: string, feedUrl: string): Promise
     // Détection des chapitres textuels
     const chapters = extractChaptersFromDescription(epDesc, epDurationSec);
 
-    const epId = `${podcastId}_${btoa(audioUrl).replace(/[^a-zA-Z0-9]/g, '').slice(0, 18)}`;
+    const guid = getTagText(item, 'guid');
+    const epId = guid
+      ? `${podcastId}_${guid.replace(/[^a-zA-Z0-9_-]/g, '_').slice(-32)}`
+      : `${podcastId}_ep_${i}_${audioUrl.replace(/[^a-zA-Z0-9_-]/g, '_').slice(-20)}`;
 
     episodes.push({
       id: epId,

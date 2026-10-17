@@ -3,7 +3,7 @@
 import React from 'react';
 import { Episode } from '@/types/podcast';
 import { usePlayer } from '@/lib/playerContext';
-import { Play, Pause, Plus, ListPlus, Clock, Zap, Check } from 'lucide-react';
+import { Play, Pause, ListPlus, Zap, Loader2 } from 'lucide-react';
 
 interface EpisodeRowProps {
   episode: Episode;
@@ -28,10 +28,11 @@ function formatDate(dateStr: string): string {
 }
 
 export default function EpisodeRow({ episode, isPlayed = false }: EpisodeRowProps) {
-  const { currentEpisode, isPlaying, playEpisode, togglePlay, addToQueue } = usePlayer();
+  const { currentEpisode, isPlaying, isLoadingAudio, playEpisode, togglePlay, addToQueue } = usePlayer();
 
   const isCurrent = currentEpisode?.id === episode.id;
   const isCurrentlyPlaying = isCurrent && isPlaying;
+  const isCurrentlyBuffering = isCurrent && isLoadingAudio;
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -45,57 +46,60 @@ export default function EpisodeRow({ episode, isPlayed = false }: EpisodeRowProp
   return (
     <div
       onClick={handlePlayClick}
-      className={`p-3.5 sm:p-4 rounded-2xl border transition flex items-start gap-3.5 cursor-pointer group ${
+      className={`p-4 rounded-3xl border transition-all duration-200 flex items-center gap-4 cursor-pointer group select-none ${
         isCurrent
-          ? 'bg-purple-950/30 border-purple-600/40'
-          : 'bg-slate-900/40 hover:bg-slate-900/80 border-slate-800/60 hover:border-slate-700'
+          ? 'bg-purple-950/40 border-purple-500/60 shadow-lg shadow-purple-950/40'
+          : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800/80 hover:border-slate-700'
       }`}
     >
-      {/* BOUTON PLAY */}
+      {/* GRAND BOUTON PLAY/PAUSE ULTRA ACCESSIBLE */}
       <button
         type="button"
         onClick={handlePlayClick}
-        className={`p-3 rounded-2xl shrink-0 transition shadow-md active:scale-95 ${
+        className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shrink-0 transition-transform active:scale-90 flex items-center justify-center shadow-lg ${
           isCurrentlyPlaying
-            ? 'bg-purple-600 text-white shadow-purple-600/30'
+            ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-purple-600/40 ring-2 ring-purple-400/50'
             : isCurrent
-            ? 'bg-purple-700 text-white'
-            : 'bg-slate-800 text-slate-300 group-hover:text-white group-hover:bg-purple-600/80'
+            ? 'bg-purple-700 text-white shadow-purple-700/30'
+            : 'bg-slate-800 text-purple-400 group-hover:bg-purple-600 group-hover:text-white shadow-black/40'
         }`}
+        title={isCurrentlyPlaying ? 'Mettre en pause' : 'Écouter'}
       >
-        {isCurrentlyPlaying ? (
-          <Pause className="w-4 h-4 fill-white" />
+        {isCurrentlyBuffering ? (
+          <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 animate-spin text-white" />
+        ) : isCurrentlyPlaying ? (
+          <Pause className="w-7 h-7 sm:w-8 sm:h-8 fill-white" />
         ) : (
-          <Play className="w-4 h-4 fill-white ml-0.5" />
+          <Play className="w-7 h-7 sm:w-8 sm:h-8 fill-current ml-0.5" />
         )}
       </button>
 
       {/* CONTENU DE L'ÉPISODE */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
+      <div className="min-w-0 flex-1 py-0.5">
+        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
           {episode.pubDate && (
-            <span className="text-[11px] font-semibold text-slate-400">
+            <span className="text-xs font-semibold text-slate-400">
               {formatDate(episode.pubDate)}
             </span>
           )}
           {episode.durationSec > 0 && (
-            <span className="text-[11px] font-mono text-slate-500">
+            <span className="text-xs font-mono text-slate-400">
               • {formatDuration(episode.durationSec)}
             </span>
           )}
           {episode.chapters && episode.chapters.length > 0 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30">
               {episode.chapters.length} chapitres
             </span>
           )}
-          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-0.5">
-            <Zap className="w-2.5 h-2.5" />
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+            <Zap className="w-3 h-3 fill-emerald-400" />
             <span>Anti-Pub</span>
           </span>
         </div>
 
-        <h4 className={`text-xs sm:text-sm font-bold leading-snug line-clamp-2 ${
-          isCurrent ? 'text-purple-300' : 'text-white group-hover:text-purple-300'
+        <h4 className={`text-sm sm:text-base font-bold leading-snug line-clamp-2 ${
+          isCurrent ? 'text-purple-300 font-extrabold' : 'text-white group-hover:text-purple-200'
         } transition`}>
           {episode.title}
         </h4>
@@ -108,17 +112,17 @@ export default function EpisodeRow({ episode, isPlayed = false }: EpisodeRowProp
       </div>
 
       {/* ACTIONS RAPIDES */}
-      <div className="shrink-0 flex items-center gap-1 self-center">
+      <div className="shrink-0 flex items-center gap-1">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             addToQueue(episode);
           }}
-          className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
+          className="p-3 text-slate-400 hover:text-white rounded-2xl hover:bg-slate-800 transition active:scale-90"
           title="Ajouter à la file d'attente"
         >
-          <ListPlus className="w-4 h-4" />
+          <ListPlus className="w-5 h-5" />
         </button>
       </div>
     </div>

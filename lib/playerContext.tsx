@@ -16,6 +16,7 @@ import {
 interface PlayerContextType {
   currentEpisode: Episode | null;
   isPlaying: boolean;
+  isLoadingAudio: boolean;
   currentTime: number;
   duration: number;
   speed: number;
@@ -47,6 +48,7 @@ const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [speed, setSpeedState] = useState(1.0);
@@ -99,10 +101,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     const onLoadedMetadata = () => {
       setDuration(audio.duration || 0);
+      setIsLoadingAudio(false);
     };
 
     const onEnded = () => {
       setIsPlaying(false);
+      setIsLoadingAudio(false);
       if (currentEpisode) {
         markEpisodePlayed(currentEpisode.id, true);
       }
@@ -111,12 +115,27 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
+    const onPlaying = () => {
+      setIsPlaying(true);
+      setIsLoadingAudio(false);
+    };
+    const onWaiting = () => setIsLoadingAudio(true);
+    const onCanPlay = () => setIsLoadingAudio(false);
+    const onError = () => {
+      console.warn('Erreur lecture élément audio:', audio.error);
+      setIsLoadingAudio(false);
+      setIsPlaying(false);
+    };
 
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('waiting', onWaiting);
+    audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener('error', onError);
 
     return () => {
       audio.pause();
@@ -125,6 +144,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('waiting', onWaiting);
+      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('error', onError);
     };
   }, [currentEpisode, adSegments]);
 
@@ -185,6 +208,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const audio = audioRef.current;
       if (!audio) return;
 
+      // Si c'est déjà l'épisode en cours, on bascule simplement Play/Pause
+      if (currentEpisode?.id === ep.id) {
+        if (isPlaying) {
+          audio.pause();
+        } else {
+          setIsLoadingAudio(true);
+          audio.play().then(() => {
+            setIsPlaying(true);
+            setIsLoadingAudio(false);
+          }).catch((err) => {
+            console.warn('Erreur lecture audio:', err);
+            setIsLoadingAudio(false);
+            setIsPlaying(false);
+          });
+        }
+        return;
+      }
+
       const pSettings = getPodcastSettings(ep.podcastId);
       const gSettings = getGlobalAdSettings();
 
@@ -193,8 +234,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setAdSegments(segments);
 
       setCurrentEpisode(ep);
-      audio.src = ep.audioUrl;
-      audio.playbackRate = pSettings.customSpeed || speed;
+      setIsLoadingAudio(true);
+      setIsPlaying(false);
+      setCurrentTime(0);
 
       // Reprise de la position sauvegardée
       const positions = getPlaybackPositions();
@@ -205,14 +247,38 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         ? segments[0].endTime + 0.1
         : savedPos;
 
-      audio.currentTime = startPos;
-      setCurrentTime(startPos);
+      audio.src = ep.audioUrl;
+      audio.playbackRate = pSettings.customSpeed || speed;
+      audio.load();
 
-      audio.play().catch((err) => {
-        console.warn('Erreur lecture audio:', err);
-      });
+      let readyHandled = false;
+      const onReadyToPlay = () => {
+        if (readyHandled) return;
+        readyHandled = true;
+
+        if (startPos > 0) {
+          try {
+            audio.currentTime = startPos;
+            setCurrentTime(startPos);
+          } catch (e) {
+            console.warn('Erreur seek audio initial:', e);
+          }
+        }
+
+        audio.play().then(() => {
+          setIsPlaying(true);
+          setIsLoadingAudio(false);
+        }).catch((err) => {
+          console.warn('Erreur lecture audio play():', err);
+          setIsLoadingAudio(false);
+          setIsPlaying(false);
+        });
+      };
+
+      audio.addEventListener('canplay', onReadyToPlay, { once: true });
+      audio.addEventListener('loadeddata', onReadyToPlay, { once: true });
     },
-    [speed]
+    [currentEpisode, isPlaying, speed]
   );
 
   const togglePlay = useCallback(() => {
@@ -221,7 +287,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play().catch(console.warn);
+      setIsLoadingAudio(true);
+      audio.play().then(() => {
+        setIsPlaying(true);
+        setIsLoadingAudio(false);
+      }).catch((err) => {
+        console.warn('Erreur togglePlay:', err);
+        setIsLoadingAudio(false);
+        setIsPlaying(false);
+      });
     }
   }, [isPlaying]);
 
@@ -230,7 +304,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resume = useCallback(() => {
-    audioRef.current?.play().catch(console.warn);
+    const audio = audioRef.current;
+    if (!audio) return;
+    setIsLoadingAudio(true);
+    audio.play().then(() => {
+      setIsPlaying(true);
+      setIsLoadingAudio(false);
+    }).catch((err) => {
+      console.warn('Erreur resume:', err);
+      setIsLoadingAudio(false);
+      setIsPlaying(false);
+    });
   }, []);
 
   const seekTo = useCallback((timeSec: number) => {
@@ -328,6 +412,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       value={{
         currentEpisode,
         isPlaying,
+        isLoadingAudio,
         currentTime,
         duration,
         speed,

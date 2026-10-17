@@ -69,9 +69,10 @@ jobs:
       - name: Synchronisation Capacitor Android
         run: npx cap sync android
 
-      - name: Configuration des permissions Android (Audio en arrière-plan)
+      - name: Configuration des permissions Android (Audio en arrière-plan et trafic HTTP)
         run: |
           sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application /<application android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
 
       - name: Configuration de la version Android
         run: |
