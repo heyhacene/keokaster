@@ -18,26 +18,30 @@ export interface SeriesGroup {
 }
 
 /**
- * Normalise une chaîne de titre pour isoler la clé de série
+ * Normalise une chaîne de titre pour isoler la clé alphanumérique
  */
-function cleanTitle(str: string): string {
+function cleanKey(str: string): string {
   return str
-    .replace(/[«»"'\(\)\[\]\-–—\:\.\,]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Nettoie les préfixes parasites fréquents (ex: "INÉDIT -", "BABABAM ORIGINALS |", "REDIFFUSION :", etc.)
+ */
+function cleanNoisePrefixes(title: string): string {
+  return title
+    .replace(/^(?:\s*\[?[^\]]*?(?:ORIGINALS|EXCLU|INEDIT|INDIT|REDIFFUSION|PODCAST|BABABAM)[^\]]*?\]?\s*[\-–—\|:]?\s*)+/i, '')
+    .trim();
 }
 
 /**
  * Détecte si un titre d'épisode contient un marqueur de série / saga en plusieurs épisodes
- * Exemples supportés :
- * - "L'affaire Untel 1/4" ou "1/4 - L'affaire Untel"
- * - "L'affaire Untel (2/4)" ou "[3/4] Le dénouement"
- * - "Affaires sensibles - Partie 1 sur 4" ou "Partie 2/3"
- * - "Épisode 1/5" ou "Ep. 2/4"
- * - "1ère partie : L'enquête" ou "2ème partie : Le procès"
+ * et isole avec précision le nom de la saga parente.
  */
-export function detectSeriesPart(title: string): SeriesPartInfo {
+export function detectSeriesPart(rawTitle: string): SeriesPartInfo {
   const notSeries: SeriesPartInfo = {
     isSeries: false,
     partNumber: 0,
@@ -46,104 +50,101 @@ export function detectSeriesPart(title: string): SeriesPartInfo {
     badgeLabel: '',
   };
 
-  if (!title || typeof title !== 'string') return notSeries;
+  if (!rawTitle || typeof rawTitle !== 'string') return notSeries;
 
-  // 1. Détection de fractions encadrées entre parenthèses ou crochets : (1/4), [2/3], (Partie 3/4)
-  const bracketFractionMatch = title.match(/[\[\(]\s*(?:partie\s*|part\s*|épisode\s*|ep\s*|volet\s*)?(\d+)\s*\/\s*(\d+)\s*[\]\)]/i);
-  if (bracketFractionMatch) {
-    const partNumber = parseInt(bracketFractionMatch[1], 10);
-    const totalParts = parseInt(bracketFractionMatch[2], 10);
+  const titleWithoutNoise = cleanNoisePrefixes(rawTitle);
 
-    if (partNumber > 0 && totalParts > 0 && partNumber <= totalParts && totalParts <= 60) {
-      const strippedTitle = title.replace(bracketFractionMatch[0], '').replace(/\s{2,}/g, ' ').replace(/^[\s\:\-\–—]+|[\s\:\-\–—]+$/g, '').trim();
-      return {
-        isSeries: true,
-        partNumber,
-        totalParts,
-        seriesKey: cleanTitle(strippedTitle),
-        seriesTitle: strippedTitle || title,
-        badgeLabel: `${partNumber}/${totalParts}`,
-      };
+  let partNumber = 0;
+  let totalParts = 0;
+  let titleWithoutPart = titleWithoutNoise;
+  let badgeLabel = '';
+
+  // 1. Détection de fractions encadrées : (1/4), [2/3], (Partie 3/4)
+  const bracketMatch = titleWithoutNoise.match(/[\[\(]\s*(?:partie\s*|part\s*|p\.)?(\d+)\s*\/\s*(\d+)\s*[\]\)]/i);
+  if (bracketMatch) {
+    partNumber = parseInt(bracketMatch[1], 10);
+    totalParts = parseInt(bracketMatch[2], 10);
+    titleWithoutPart = titleWithoutNoise.replace(bracketMatch[0], ' ');
+    badgeLabel = `${partNumber}/${totalParts}`;
+  } else {
+    // 2. Détection de fractions délimitées : " 1/4 ", "- 2/4 -", ": 3/4"
+    const standardFractionMatch = titleWithoutNoise.match(/(?:^|[\s\-\–—\:\#\|])(?:partie\s*|part\s*|p\.)?(\d+)\s*\/\s*(\d+)(?![\d\/])(?:[\s\-\–—\:\#\|]|$)/i);
+    if (standardFractionMatch) {
+      partNumber = parseInt(standardFractionMatch[1], 10);
+      totalParts = parseInt(standardFractionMatch[2], 10);
+      titleWithoutPart = titleWithoutNoise.replace(standardFractionMatch[0], ' - ');
+      badgeLabel = `${partNumber}/${totalParts}`;
+    } else {
+      // 3. Détection "Partie X sur Y"
+      const surMatch = titleWithoutNoise.match(/(?:partie|part|épisode|episode|volet|chapitre|acte)\s*(\d+)\s*(?:sur|\/)\s*(\d+)/i);
+      if (surMatch) {
+        partNumber = parseInt(surMatch[1], 10);
+        totalParts = parseInt(surMatch[2], 10);
+        titleWithoutPart = titleWithoutNoise.replace(surMatch[0], ' ');
+        badgeLabel = `${partNumber}/${totalParts}`;
+      } else {
+        // 4. Détection "Partie X", "Volet X"
+        const singlePartMatch = titleWithoutNoise.match(/(?:^|[\s\-\–—\:\(\[])(?:partie|part|volet|chapitre|acte)\s*(\d+)(?:[\s\-\–—\:\)\]]|$)/i);
+        if (singlePartMatch) {
+          partNumber = parseInt(singlePartMatch[1], 10);
+          totalParts = 0;
+          titleWithoutPart = titleWithoutNoise.replace(singlePartMatch[0], ' ');
+          badgeLabel = `Partie ${partNumber}`;
+        } else {
+          // 5. Ordinaux : "1ère partie", "2ème partie"
+          const ordinalMatch = titleWithoutNoise.match(/(\d+)(?:ère|ere|er|ème|eme|e|re)\s*(?:partie|part|volet|chapitre)/i);
+          if (ordinalMatch) {
+            partNumber = parseInt(ordinalMatch[1], 10);
+            totalParts = 0;
+            titleWithoutPart = titleWithoutNoise.replace(ordinalMatch[0], ' ');
+            badgeLabel = `Partie ${partNumber}`;
+          }
+        }
+      }
     }
   }
 
-  // 2. Détection de fractions standard : "1/4", "- 2/4 -", ": 3/4"
-  // On s'assure qu'il ne s'agit pas d'une date (pas de troisième segment "/2024" ou "/24")
-  const standardFractionMatch = title.match(/(?:^|[\s\-\–—\:\#\|])(?:partie\s*|part\s*|épisode\s*|ep\s*|volet\s*)?(\d+)\s*\/\s*(\d+)(?![\d\/])(?:[\s\-\–—\:\#\|]|$)/i);
-  if (standardFractionMatch) {
-    const partNumber = parseInt(standardFractionMatch[1], 10);
-    const totalParts = parseInt(standardFractionMatch[2], 10);
+  // Validation des bornes
+  if (partNumber <= 0 || (totalParts > 0 && partNumber > totalParts) || (totalParts > 60)) {
+    return notSeries;
+  }
 
-    // Rejeter les fausses dates (ex: 12/04 où part > total, ou jours de l'année)
-    if (partNumber > 0 && totalParts > 0 && partNumber <= totalParts && totalParts <= 60) {
-      const strippedTitle = title.replace(standardFractionMatch[0], ' - ').replace(/\s{2,}/g, ' ').replace(/^[\s\:\-\–—]+|[\s\:\-\–—]+$/g, '').trim();
-      return {
-        isSeries: true,
-        partNumber,
-        totalParts,
-        seriesKey: cleanTitle(strippedTitle),
-        seriesTitle: strippedTitle || title,
-        badgeLabel: `${partNumber}/${totalParts}`,
-      };
+  // Nettoyage de la chaîne restante
+  const cleanRemaining = titleWithoutPart
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\:\-\–—|.,]+|[\s\:\-\–—|.,]+$/g, '')
+    .trim();
+
+  // ISOLATION DU NOM DE LA SAGA :
+  // Dans les podcasts, le nom de la saga est quasiment toujours avant le délimiteur ':' ou ' - ' ou '–'
+  // Ex: "L'affaire Joël Le Scouarnec : les enfants oubliés" -> "L'affaire Joël Le Scouarnec"
+  // Ex: "Le mystère Alexandre Despallières... : l'ultime pirouette" -> "Le mystère Alexandre Despallières..."
+  let sagaName = cleanRemaining;
+  const delimiterMatch = cleanRemaining.match(/^(.*?)\s*[:–—|]\s*(.*)$/);
+  if (delimiterMatch) {
+    const beforeDelimiter = delimiterMatch[1].trim();
+    if (beforeDelimiter.length >= 5) {
+      sagaName = beforeDelimiter;
     }
   }
 
-  // 3. Détection de "Partie X sur Y", "Volet X sur Y", "Épisode X sur Y"
-  const surMatch = title.match(/(?:partie|part|épisode|episode|volet|chapitre|acte)\s*(\d+)\s*(?:sur|\/)\s*(\d+)/i);
-  if (surMatch) {
-    const partNumber = parseInt(surMatch[1], 10);
-    const totalParts = parseInt(surMatch[2], 10);
-
-    if (partNumber > 0 && totalParts > 0 && partNumber <= totalParts && totalParts <= 60) {
-      const strippedTitle = title.replace(surMatch[0], '').replace(/\s{2,}/g, ' ').replace(/^[\s\:\-\–—]+|[\s\:\-\–—]+$/g, '').trim();
-      return {
-        isSeries: true,
-        partNumber,
-        totalParts,
-        seriesKey: cleanTitle(strippedTitle),
-        seriesTitle: strippedTitle || title,
-        badgeLabel: `${partNumber}/${totalParts}`,
-      };
-    }
+  const k = cleanKey(sagaName);
+  if (k.length < 4) {
+    return notSeries;
   }
 
-  // 4. Détection de "Partie X", "Volet X", "Chapitre X" sans total explicite
-  const singlePartMatch = title.match(/(?:^|[\s\-\–—\:\(\[])(?:partie|part|volet|chapitre|acte)\s*(\d+)(?:[\s\-\–—\:\)\]]|$)/i);
-  if (singlePartMatch) {
-    const partNumber = parseInt(singlePartMatch[1], 10);
-    if (partNumber > 0 && partNumber <= 60) {
-      const strippedTitle = title.replace(singlePartMatch[0], ' ').replace(/\s{2,}/g, ' ').replace(/^[\s\:\-\–—]+|[\s\:\-\–—]+$/g, '').trim();
-      return {
-        isSeries: true,
-        partNumber,
-        seriesKey: cleanTitle(strippedTitle),
-        seriesTitle: strippedTitle || title,
-        badgeLabel: `Partie ${partNumber}`,
-      };
-    }
-  }
-
-  // 5. Détection d'ordinaux français : "1ère partie", "2ème partie", "3e partie"
-  const ordinalMatch = title.match(/(\d+)(?:ère|ere|er|ème|eme|e|re)\s*(?:partie|part|volet|chapitre)/i);
-  if (ordinalMatch) {
-    const partNumber = parseInt(ordinalMatch[1], 10);
-    if (partNumber > 0 && partNumber <= 60) {
-      const strippedTitle = title.replace(ordinalMatch[0], ' ').replace(/\s{2,}/g, ' ').replace(/^[\s\:\-\–—]+|[\s\:\-\–—]+$/g, '').trim();
-      return {
-        isSeries: true,
-        partNumber,
-        seriesKey: cleanTitle(strippedTitle),
-        seriesTitle: strippedTitle || title,
-        badgeLabel: `Partie ${partNumber}`,
-      };
-    }
-  }
-
-  return notSeries;
+  return {
+    isSeries: true,
+    partNumber,
+    totalParts: totalParts > 0 ? totalParts : undefined,
+    seriesKey: k,
+    seriesTitle: sagaName,
+    badgeLabel: badgeLabel || (totalParts > 0 ? `${partNumber}/${totalParts}` : `Partie ${partNumber}`),
+  };
 }
 
 /**
- * Regroupe les épisodes d'un podcast en séries détectées
+ * Regroupe les épisodes d'un podcast en véritables séries détectées (au moins 2 parties distinctes)
  */
 export function detectSeriesGroups(episodes: Episode[]): SeriesGroup[] {
   const groupsMap = new Map<string, { title: string; totalParts: number; episodes: Episode[] }>();
@@ -152,9 +153,7 @@ export function detectSeriesGroups(episodes: Episode[]): SeriesGroup[] {
     const info = detectSeriesPart(ep.title);
     if (!info.isSeries) return;
 
-    // Calcul d'une clé de groupe : si un titre de série a été extrait, on utilise cette racine
-    // Sinon on utilise les premiers mots significatifs
-    const key = info.seriesKey.length >= 4 ? info.seriesKey : cleanTitle(ep.podcastTitle) + `_${info.totalParts || 'saga'}`;
+    const key = info.seriesKey;
 
     if (!groupsMap.has(key)) {
       groupsMap.set(key, {
@@ -165,7 +164,6 @@ export function detectSeriesGroups(episodes: Episode[]): SeriesGroup[] {
     }
 
     const group = groupsMap.get(key)!;
-    // Éviter les doublons
     if (!group.episodes.some((e) => e.id === ep.id)) {
       group.episodes.push(ep);
     }
@@ -177,27 +175,47 @@ export function detectSeriesGroups(episodes: Episode[]): SeriesGroup[] {
   const result: SeriesGroup[] = [];
 
   groupsMap.forEach((g, key) => {
-    // Une série est retenue si elle a au moins 2 épisodes OU un totalParts >= 2
-    if (g.episodes.length >= 2 || (g.totalParts >= 2 && g.episodes.length >= 1)) {
-      // Trier les épisodes du groupe dans l'ordre croissant (Partie 1, Partie 2, etc.)
-      const sorted = [...g.episodes].sort((a, b) => {
-        const infoA = detectSeriesPart(a.title);
-        const infoB = detectSeriesPart(b.title);
-        if (infoA.partNumber !== infoB.partNumber) {
-          return infoA.partNumber - infoB.partNumber;
+    // RÈGLE STRICTE : Une vraie saga doit contenir au moins 2 épisodes identifiés !
+    if (g.episodes.length >= 2) {
+      // Dédupliquer par numéro de partie (garder le plus récent en cas de rediffusion)
+      const partMap = new Map<number, Episode>();
+      g.episodes.forEach((ep) => {
+        const info = detectSeriesPart(ep.title);
+        const existing = partMap.get(info.partNumber);
+        if (!existing) {
+          partMap.set(info.partNumber, ep);
+        } else {
+          // Si rediffusion, garder la plus récente
+          const timeA = ep.pubDate ? new Date(ep.pubDate).getTime() : 0;
+          const timeExisting = existing.pubDate ? new Date(existing.pubDate).getTime() : 0;
+          if (timeA > timeExisting) {
+            partMap.set(info.partNumber, ep);
+          }
         }
-        // En cas d'égalité, ordre chronologique
-        return new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime();
       });
 
-      result.push({
-        id: `series_${key}`,
-        title: g.title,
-        totalParts: g.totalParts || sorted.length,
-        episodes: sorted,
-        isComplete: g.totalParts > 0 ? sorted.length >= g.totalParts : true,
-      });
+      const uniqueSorted = Array.from(partMap.entries())
+        .sort(([partA], [partB]) => partA - partB)
+        .map(([, ep]) => ep);
+
+      // Si après déduplication il reste au moins 2 parties distinctes
+      if (uniqueSorted.length >= 2) {
+        result.push({
+          id: `series_${key}`,
+          title: g.title,
+          totalParts: g.totalParts || uniqueSorted.length,
+          episodes: uniqueSorted,
+          isComplete: g.totalParts > 0 ? uniqueSorted.length >= g.totalParts : true,
+        });
+      }
     }
+  });
+
+  // Trier les sagas par date de leur épisode le plus récent (la saga d'actualité en premier !)
+  result.sort((a, b) => {
+    const latestA = Math.max(...a.episodes.map((e) => (e.pubDate ? new Date(e.pubDate).getTime() : 0)));
+    const latestB = Math.max(...b.episodes.map((e) => (e.pubDate ? new Date(e.pubDate).getTime() : 0)));
+    return latestB - latestA;
   });
 
   return result;
@@ -207,7 +225,7 @@ export function detectSeriesGroups(episodes: Episode[]): SeriesGroup[] {
  * Trie une liste d'épisodes selon le mode sélectionné :
  * - 'newest' : Les plus récents en premier (ordre standard du flux RSS)
  * - 'oldest' : Les plus anciens en premier (ordre chronologique de parution)
- * - 'series' : Les épisodes en plusieurs parties (1/4, 2/4...) sont regroupés et classés dans l'ordre (1 ➔ 2 ➔ 3 ➔ 4)
+ * - 'series' : Les sagas multi-parties sont remises dans l'ordre croissant (1 ➔ 2 ➔ 3 ➔ 4)
  */
 export function sortEpisodes(
   episodes: Episode[],
@@ -244,7 +262,6 @@ export function sortEpisodes(
   const handledGroupIds = new Set<string>();
   const result: Episode[] = [];
 
-  // Parcourir les épisodes récents pour placer les sagas à leur position d'actualité
   const baseOrder = [...episodes].sort((a, b) => {
     const timeA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
     const timeB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
@@ -258,7 +275,7 @@ export function sortEpisodes(
     } else {
       if (!handledGroupIds.has(grp.id)) {
         handledGroupIds.add(grp.id);
-        // Injecte tous les épisodes de la série dans l'ordre 1 ➔ 2 ➔ 3 ➔ 4 !
+        // Injecte tous les épisodes de la saga dans l'ordre 1 ➔ 2 ➔ 3 ➔ 4 !
         result.push(...grp.episodes);
       }
     }
