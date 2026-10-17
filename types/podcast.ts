@@ -63,3 +63,11 @@ export interface GlobalAdSettings {
   smartKeywordDetection: boolean;
   showNotificationOnSkip: boolean;
 }
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  episodes: Episode[];
+}

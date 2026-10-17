@@ -124,7 +124,7 @@ function PodcastContent() {
     if (!podcast) return;
     const next = { ...settings, ...updates };
     setSettings(next);
-    savePodcastSettings(podcast.id, next);
+    savePodcastSettings(podcast.id, next, podcast.feedUrl);
   };
 
   const handleSortChange = (newOrder: 'newest' | 'oldest' | 'series') => {
@@ -266,9 +266,13 @@ function PodcastContent() {
         {/* DÉTAILS & BOUTONS */}
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-              <Zap className="w-2.5 h-2.5 fill-emerald-400" />
-              <span>Anti-Pub Actif</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+              settings.adBlockEnabled !== false
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                : 'bg-slate-800 text-slate-400 border-slate-700'
+            }`}>
+              <Zap className={`w-2.5 h-2.5 ${settings.adBlockEnabled !== false ? 'fill-emerald-400' : 'text-slate-500'}`} />
+              <span>{settings.adBlockEnabled !== false ? 'Anti-Pub Actif' : 'Anti-Pub Désactivé'}</span>
             </span>
             {detectedSeriesList.length > 0 && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
@@ -349,16 +353,32 @@ function PodcastContent() {
                 Paramètres Anti-Pub pour ce podcast
               </h3>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-[11px] text-slate-400">ZeroPub activé</span>
-              <input
-                type="checkbox"
-                checked={settings.adBlockEnabled}
-                onChange={(e) => handleUpdateSettings({ adBlockEnabled: e.target.checked })}
-                className="w-4 h-4 accent-purple-500 rounded"
-              />
-            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-300">
+                {settings.adBlockEnabled !== false ? 'Stop-Pub Activé' : 'Exclu du Stop-Pub'}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleUpdateSettings({ adBlockEnabled: settings.adBlockEnabled === false })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.adBlockEnabled !== false ? 'bg-emerald-500' : 'bg-slate-700'
+                }`}
+                title={settings.adBlockEnabled !== false ? "Désactiver le Stop-Pub pour ce podcast" : "Réactiver le Stop-Pub pour ce podcast"}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.adBlockEnabled !== false ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
+
+          <p className="text-[11px] text-slate-400">
+            {settings.adBlockEnabled === false
+              ? '⚠️ Ce podcast est exclu du Stop-Pub : aucune coupure publicitaire ou sponsor ne sera sauté.'
+              : '⚡ Moteur ZeroPub actif : détection et coupure automatique des publicités audio et sponsors.'}
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>

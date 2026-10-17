@@ -1,4 +1,4 @@
-import { Podcast, Episode, GlobalAdSettings, PodcastSettings } from '@/types/podcast';
+import { Podcast, Episode, GlobalAdSettings, PodcastSettings, Playlist } from '@/types/podcast';
 import { DEFAULT_GLOBAL_AD_SETTINGS } from './adBlocker';
 
 const SUBS_KEY = 'keokaster_subscriptions_v1';
@@ -7,6 +7,7 @@ const QUEUE_KEY = 'keokaster_queue_v1';
 const PLAYED_KEY = 'keokaster_played_v1';
 const AD_SETTINGS_KEY = 'keokaster_ad_settings_v1';
 const PODCAST_SETTINGS_KEY = 'keokaster_podcast_settings_v1';
+const PLAYLISTS_KEY = 'keokaster_playlists_v1';
 
 export function getCanonicalPodcastId(feedUrl: string): string {
   if (!feedUrl) return '';
@@ -191,7 +192,11 @@ export function getPodcastSettings(podcastId: string): PodcastSettings {
   try {
     const raw = localStorage.getItem(PODCAST_SETTINGS_KEY);
     const map = raw ? JSON.parse(raw) : {};
-    return map[podcastId] || {
+    const canonical = getCanonicalPodcastId(podcastId);
+    const found = map[podcastId] || (canonical ? map[canonical] : undefined);
+    if (found) return found;
+
+    return {
       autoSkipIntroSec: global.defaultIntroSkipSec,
       autoSkipOutroSec: global.defaultOutroSkipSec,
       adBlockEnabled: global.enabled,
@@ -205,12 +210,140 @@ export function getPodcastSettings(podcastId: string): PodcastSettings {
   }
 }
 
-export function savePodcastSettings(podcastId: string, settings: PodcastSettings): void {
+export function savePodcastSettings(podcastId: string, settings: PodcastSettings, feedUrl?: string): void {
   if (typeof window === 'undefined') return;
   try {
     const raw = localStorage.getItem(PODCAST_SETTINGS_KEY);
     const map = raw ? JSON.parse(raw) : {};
     map[podcastId] = settings;
+    const canonical = getCanonicalPodcastId(podcastId);
+    if (canonical) {
+      map[canonical] = settings;
+    }
+    if (feedUrl) {
+      map[feedUrl] = settings;
+      const cFeed = getCanonicalPodcastId(feedUrl);
+      if (cFeed) map[cFeed] = settings;
+    }
     localStorage.setItem(PODCAST_SETTINGS_KEY, JSON.stringify(map));
+
+    window.dispatchEvent(new CustomEvent('keokaster_podcast_settings_changed', {
+      detail: { podcastId, settings },
+    }));
   } catch {}
+}
+
+export interface ExcludedPodcastItem {
+  id: string;
+  settings: PodcastSettings;
+  podcast?: Podcast;
+}
+
+export function getAllExcludedPodcastSettings(): ExcludedPodcastItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(PODCAST_SETTINGS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    const subs = getSubscribedPodcasts();
+    const seen = new Set<string>();
+    const result: ExcludedPodcastItem[] = [];
+
+    Object.entries(map).forEach(([key, val]: [string, any]) => {
+      if (val && val.adBlockEnabled === false) {
+        // Déduplication (éviter d'afficher à la fois l'id et le feedUrl)
+        const canonical = getCanonicalPodcastId(key) || key;
+        if (!seen.has(canonical)) {
+          seen.add(canonical);
+          const matchedPodcast = subs.find(
+            (s) => s.id === key || s.feedUrl === key || getCanonicalPodcastId(s.feedUrl) === canonical
+          );
+          result.push({
+            id: key,
+            settings: val,
+            podcast: matchedPodcast,
+          });
+        }
+      }
+    });
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+export function removePodcastExclusion(podcastId: string): void {
+  const current = getPodcastSettings(podcastId);
+  savePodcastSettings(podcastId, { ...current, adBlockEnabled: true });
+}
+
+// ==================== GESTION DES PLAYLISTS ====================
+
+export function getPlaylists(): Playlist[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(PLAYLISTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePlaylists(list: Playlist[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('keokaster_playlists_changed'));
+  } catch {}
+}
+
+export function createPlaylist(name: string, description?: string): Playlist {
+  const trimmed = name.trim();
+  const newPl: Playlist = {
+    id: `pl_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    name: trimmed || 'Ma Playlist',
+    description: description?.trim() || '',
+    createdAt: new Date().toISOString(),
+    episodes: [],
+  };
+  const list = getPlaylists();
+  savePlaylists([newPl, ...list]);
+  return newPl;
+}
+
+export function deletePlaylist(playlistId: string): void {
+  const list = getPlaylists();
+  const updated = list.filter((p) => p.id !== playlistId);
+  savePlaylists(updated);
+}
+
+export function addEpisodeToPlaylist(playlistId: string, episode: Episode): boolean {
+  const list = getPlaylists();
+  const idx = list.findIndex((p) => p.id === playlistId);
+  if (idx === -1) return false;
+
+  const pl = list[idx];
+  // Éviter d'ajouter deux fois le même épisode dans la playlist
+  if (pl.episodes.some((e) => e.id === episode.id)) {
+    return false;
+  }
+
+  const updatedPl = {
+    ...pl,
+    episodes: [...pl.episodes, episode],
+  };
+
+  list[idx] = updatedPl;
+  savePlaylists(list);
+  return true;
+}
+
+export function removeEpisodeFromPlaylist(playlistId: string, episodeId: string): void {
+  const list = getPlaylists();
+  const idx = list.findIndex((p) => p.id === playlistId);
+  if (idx === -1) return;
+
+  const pl = list[idx];
+  const updatedEpisodes = pl.episodes.filter((e) => e.id !== episodeId);
+  list[idx] = { ...pl, episodes: updatedEpisodes };
+  savePlaylists(list);
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { searchPodcasts, SearchResultItem, TRENDING_PODCASTS } from '@/lib/podcastSearch';
+import { searchPodcasts, SearchResultItem } from '@/lib/podcastSearch';
 import PodcastCard from '@/components/PodcastCard';
 import { getSubscribedPodcasts, togglePodcastSubscription, getCanonicalPodcastId } from '@/lib/storage';
 import { Search, Loader2, Radio, Sparkles } from 'lucide-react';
@@ -40,7 +40,7 @@ export default function SearchPage() {
         }
       } catch {}
     }
-    return TRENDING_PODCASTS;
+    return [];
   });
 
   const [loading, setLoading] = useState(false);
@@ -94,14 +94,14 @@ export default function SearchPage() {
     // Si la page vient d'être restaurée depuis le sessionStorage avec déjà des résultats, ne pas recharger
     if (isFirstMount.current) {
       isFirstMount.current = false;
-      if (query.trim() && results.length > 0 && results !== TRENDING_PODCASTS) {
+      if (query.trim() && results.length > 0) {
         return;
       }
     }
 
     const trimmed = query.trim();
     if (!trimmed) {
-      setResults(TRENDING_PODCASTS);
+      setResults([]);
       setLoading(false);
       return;
     }
@@ -141,7 +141,7 @@ export default function SearchPage() {
     setQuery(val);
     const trimmed = val.trim();
     if (!trimmed) {
-      setResults(TRENDING_PODCASTS);
+      setResults([]);
       setLoading(false);
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('keokaster_search_query');
@@ -149,7 +149,7 @@ export default function SearchPage() {
         sessionStorage.removeItem('keokaster_search_scroll');
       }
     } else {
-      // Nettoyage immédiat : AUCUN ancien résultat ou suggestion parasite ne subsiste à l'écran
+      // Nettoyage immédiat : AUCUN ancien résultat ne subsiste à l'écran
       setResults([]);
       setLoading(true);
     }
@@ -159,7 +159,7 @@ export default function SearchPage() {
     const trimmed = searchTerm.trim();
     setQuery(trimmed);
     if (!trimmed) {
-      setResults(TRENDING_PODCASTS);
+      setResults([]);
       setLoading(false);
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('keokaster_search_query');
@@ -193,7 +193,7 @@ export default function SearchPage() {
   const handleClear = () => {
     searchSeqRef.current++;
     setQuery('');
-    setResults(TRENDING_PODCASTS);
+    setResults([]);
     setLoading(false);
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('keokaster_search_query');
@@ -290,11 +290,11 @@ export default function SearchPage() {
         ))}
       </div>
 
-      {/* RÉSULTATS OU SUGGESTIONS POPULAIRES */}
+      {/* RÉSULTATS DE RECHERCHE */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {query.trim() ? (
+        {query.trim() && (
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
                 {loading ? (
                   <>
@@ -305,17 +305,25 @@ export default function SearchPage() {
                   <span>{results.length} résultat(s) pour « {query} »</span>
                 )}
               </span>
-            ) : (
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Suggestions populaires du moment</span>
-              </span>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* AFFICHAGE : SKELETON LORS DE LA RECHERCHE OU RÉSULTATS */}
-        {loading ? (
+        {/* AFFICHAGE : ACCUEIL SANS SUGGESTIONS, SKELETON OU RÉSULTATS */}
+        {!query.trim() ? (
+          <div className="text-center py-16 bg-slate-900/30 rounded-3xl border border-slate-800/60 p-6 sm:p-8 space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <Search className="w-7 h-7" />
+            </div>
+            <h3 className="text-base sm:text-lg font-extrabold text-white">
+              Que souhaitez-vous écouter ?
+            </h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+              Tapez le nom d'une émission, un créateur, ou cliquez sur une thématique ci-dessus.
+              Vous pouvez aussi coller directement le lien complet d'un flux RSS.
+            </p>
+          </div>
+        ) : loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 animate-pulse">
             {[...Array(6)].map((_, idx) => (
               <div
@@ -349,7 +357,7 @@ export default function SearchPage() {
               onClick={handleClear}
               className="mt-3 px-4 py-2 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 text-xs font-bold hover:bg-purple-600 hover:text-white transition"
             >
-              Revenir aux suggestions
+              Effacer la recherche
             </button>
           </div>
         ) : (

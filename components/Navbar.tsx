@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Radio, Search, Library, Settings, ShieldCheck } from 'lucide-react';
+import { Radio, Search, Library, Settings, ShieldCheck, ListMusic } from 'lucide-react';
 import { getSubscribedPodcasts } from '@/lib/storage';
 
 export default function Navbar() {
@@ -27,6 +27,7 @@ export default function Navbar() {
 
   const isHomeActive = pathname === '/';
   const isSearchActive = pathname?.startsWith('/search');
+  const isPlaylistsActive = pathname?.startsWith('/playlists');
   const isLibraryActive = pathname?.startsWith('/library');
   const isSettingsActive = pathname?.startsWith('/settings');
 
@@ -78,6 +79,20 @@ export default function Navbar() {
           >
             <Search className="w-5 h-5 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline ml-1.5">Recherche</span>
+          </Link>
+
+          {/* LIEN PLAYLISTS */}
+          <Link
+            href="/playlists"
+            className={`flex items-center justify-center p-2.5 sm:px-3 sm:py-2 rounded-2xl text-xs font-bold transition active:scale-95 ${
+              isPlaylistsActive
+                ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
+            }`}
+            title="Mes Playlists"
+          >
+            <ListMusic className="w-5 h-5 sm:w-4 sm:h-4 text-purple-300" />
+            <span className="hidden sm:inline ml-1.5">Playlists</span>
           </Link>
 
           {/* GROS BOUTON BIBLIOTHÈQUE MIS EN AVANT */}

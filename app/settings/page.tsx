@@ -8,6 +8,9 @@ import {
   getSubscribedPodcasts,
   saveSubscribedPodcasts,
   getPlaybackPositions,
+  getAllExcludedPodcastSettings,
+  removePodcastExclusion,
+  ExcludedPodcastItem,
 } from '@/lib/storage';
 import {
   fetchLatestKeoKasterApk,
@@ -35,6 +38,7 @@ import {
   ArrowRight,
   ShieldAlert,
   Clock,
+  Radio,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -55,9 +59,17 @@ export default function SettingsPage() {
   // Statistiques IA ZeroPub
   const [aiStats, setAiStats] = useState({ adsCut: 0, timeSavedMinutes: 0, timeSavedSeconds: 0 });
 
+  // Podcasts exclus de l'Anti-Pub
+  const [excludedPodcasts, setExcludedPodcasts] = useState<ExcludedPodcastItem[]>([]);
+
+  const refreshExcluded = () => {
+    setExcludedPodcasts(getAllExcludedPodcastSettings());
+  };
+
   useEffect(() => {
     setSettings(getGlobalAdSettings());
     setAiStats(getAICutStats());
+    refreshExcluded();
     const storedUser = localStorage.getItem('keokaster_user') || '';
     setKeoUser(storedUser);
     const storedSync = localStorage.getItem('keokaster_last_sync') || null;
@@ -66,6 +78,7 @@ export default function SettingsPage() {
     // Écouter les mises à jour des statistiques en temps réel
     const onStatsUpdated = () => setAiStats(getAICutStats());
     window.addEventListener('keokaster_stats_updated', onStatsUpdated);
+    window.addEventListener('keokaster_podcast_settings_changed', refreshExcluded);
 
     // Vérifier silencieusement les mises à jour au chargement
     fetchLatestKeoKasterApk().then((rel) => {
@@ -74,8 +87,16 @@ export default function SettingsPage() {
 
     return () => {
       window.removeEventListener('keokaster_stats_updated', onStatsUpdated);
+      window.removeEventListener('keokaster_podcast_settings_changed', refreshExcluded);
     };
   }, []);
+
+  const handleRemoveExclusion = (podcastId: string) => {
+    removePodcastExclusion(podcastId);
+    refreshExcluded();
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 2000);
+  };
 
   const handleCheckUpdates = async () => {
     setCheckingUpdate(true);
@@ -504,6 +525,64 @@ export default function SettingsPage() {
               className="w-4 h-4 accent-purple-500 rounded"
             />
           </label>
+        </div>
+
+        {/* LISTE DES PODCASTS EXCLUS DU STOP-PUB */}
+        <div className="pt-3 border-t border-slate-800 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-amber-400" />
+              <span>Podcasts exclus du Stop-Pub</span>
+            </span>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+              {excludedPodcasts.length} exclu{excludedPodcasts.length > 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {excludedPodcasts.length === 0 ? (
+            <p className="text-[11px] text-slate-400 p-3 rounded-2xl bg-slate-950 border border-slate-800/80">
+              Aucun podcast exclu. L'Anti-Pub ZeroPub s'applique à l'ensemble de vos émissions.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {excludedPodcasts.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3 rounded-2xl bg-slate-950 border border-amber-500/30 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 flex items-center gap-2.5">
+                    {item.podcast?.artworkUrl ? (
+                      <img
+                        src={item.podcast.artworkUrl}
+                        alt=""
+                        className="w-9 h-9 rounded-xl object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
+                        <Radio className="w-4 h-4 text-slate-400" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white truncate">
+                        {item.podcast?.title || item.id}
+                      </p>
+                      <p className="text-[10px] text-amber-400 font-semibold">
+                        Stop-Pub désactivé
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExclusion(item.id)}
+                    className="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition active:scale-95 shrink-0"
+                  >
+                    Réactiver
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

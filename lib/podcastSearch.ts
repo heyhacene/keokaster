@@ -133,7 +133,7 @@ function normalizeText(str: string): string {
 
 export async function searchPodcasts(query: string): Promise<SearchResultItem[]> {
   const cleanQuery = query.trim();
-  if (!cleanQuery) return TRENDING_PODCASTS;
+  if (!cleanQuery) return [];
 
   // Si l'utilisateur colle directement une URL de flux RSS
   if (/^https?:\/\/.+\.(xml|rss)/i.test(cleanQuery) || cleanQuery.includes('/feed') || cleanQuery.includes('/rss')) {
@@ -284,12 +284,6 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     return finalList.slice(0, 10).map(({ _score, _containsPhrase, _startsWith, _exactMatch, _allSignificantMatch, _hasAnySignificant, ...item }: any) => item);
   }
 
-  // 3. Fallback local uniquement si le terme correspond à nos flux préenregistrés
-  const lower = cleanQuery.toLowerCase();
-  return TRENDING_PODCASTS.filter(
-    (p) =>
-      p.title.toLowerCase().includes(lower) ||
-      p.author.toLowerCase().includes(lower) ||
-      p.categories.some((c) => c.toLowerCase().includes(lower))
-  );
+  // Si aucun résultat externe n'a été trouvé
+  return [];
 }

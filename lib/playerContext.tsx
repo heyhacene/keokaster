@@ -82,6 +82,32 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     adSegmentsRef.current = adSegments;
   }, [adSegments]);
 
+  // Synchronisation dynamique si les paramètres d'exclusion d'un podcast changent
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSettingsChange = () => {
+      const ep = currentEpisodeRef.current;
+      if (!ep) return;
+      const pSettings = getPodcastSettings(ep.podcastId);
+      const gSettings = getGlobalAdSettings();
+      const isActive = gSettings.enabled && pSettings.adBlockEnabled !== false;
+      if (!isActive) {
+        setAdSegments([]);
+        adSegmentsRef.current = [];
+        setAiAdResult(null);
+      } else {
+        const introSec = pSettings.autoSkipIntroSec ?? gSettings.defaultIntroSkipSec;
+        const outroSec = pSettings.autoSkipOutroSec ?? gSettings.defaultOutroSkipSec;
+        const detectionResult = analyzeEpisodeAdsWithAI(ep, ep.chapters, introSec, outroSec);
+        setAiAdResult(detectionResult);
+        setAdSegments(detectionResult.segments);
+        adSegmentsRef.current = detectionResult.segments;
+      }
+    };
+    window.addEventListener('keokaster_podcast_settings_changed', onSettingsChange);
+    return () => window.removeEventListener('keokaster_podcast_settings_changed', onSettingsChange);
+  }, []);
+
   // Initialisation de l'élément Audio - UNIQUE pour toute la durée de vie de l'app
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -266,7 +292,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       let segments: AdSegment[] = [];
       let detectionResult: AIAdDetectionResult | null = null;
 
-      if (gSettings.enabled) {
+      // Vérification STRICTE : Stop-Pub doit être activé au niveau global ET ne pas être exclu pour ce podcast
+      const isAdBlockActive = gSettings.enabled && pSettings.adBlockEnabled !== false;
+
+      if (isAdBlockActive) {
         const introSec = pSettings.autoSkipIntroSec ?? gSettings.defaultIntroSkipSec;
         const outroSec = pSettings.autoSkipOutroSec ?? gSettings.defaultOutroSkipSec;
         detectionResult = analyzeEpisodeAdsWithAI(ep, ep.chapters, introSec, outroSec);
