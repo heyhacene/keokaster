@@ -265,8 +265,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       let detectionResult: AIAdDetectionResult | null = null;
 
       if (gSettings.enabled) {
-        const introSec = pSettings.customIntroSkipSec ?? gSettings.defaultIntroSkipSec;
-        const outroSec = pSettings.customOutroSkipSec ?? gSettings.defaultOutroSkipSec;
+        const introSec = pSettings.autoSkipIntroSec ?? gSettings.defaultIntroSkipSec;
+        const outroSec = pSettings.autoSkipOutroSec ?? gSettings.defaultOutroSkipSec;
         detectionResult = analyzeEpisodeAdsWithAI(ep, ep.chapters, introSec, outroSec);
         segments = [...detectionResult.segments];
 
