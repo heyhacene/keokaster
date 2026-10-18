@@ -25,6 +25,7 @@ export interface Episode {
   audioUrl: string;
   durationSec: number;
   pubDate: string;
+  author?: string;
   artworkUrl?: string;
   chapters?: Chapter[];
   adSegments?: AdSegment[];

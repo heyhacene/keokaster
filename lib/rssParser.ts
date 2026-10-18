@@ -163,6 +163,7 @@ export async function parsePodcastRss(xmlText: string, feedUrl: string): Promise
       audioUrl,
       durationSec: epDurationSec,
       pubDate: epPubDate,
+      author: podcastAuthor,
       artworkUrl: epArtwork,
       chapters: chapters.length > 0 ? chapters : undefined,
     });
