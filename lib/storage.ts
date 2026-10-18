@@ -285,14 +285,49 @@ export function removePodcastExclusion(podcastId: string): void {
 
 // ==================== GESTION DES PLAYLISTS ====================
 
+export const DEFAULT_PLAYLIST_ID = 'pl_default_selection';
+export const DEFAULT_PLAYLIST_NAME = 'Ma Playlist (Par défaut)';
+
 export function getPlaylists(): Playlist[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(PLAYLISTS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    let list: Playlist[] = raw ? JSON.parse(raw) : [];
+
+    // Garantir que la playlist par défaut existe toujours
+    const hasDefault = list.some((p) => p.id === DEFAULT_PLAYLIST_ID);
+    if (!hasDefault) {
+      const defaultPl: Playlist = {
+        id: DEFAULT_PLAYLIST_ID,
+        name: DEFAULT_PLAYLIST_NAME,
+        description: 'Votre playlist par défaut en accès rapide',
+        createdAt: new Date().toISOString(),
+        episodes: [],
+      };
+      list = [defaultPl, ...list];
+      localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(list));
+    }
+
+    return list;
   } catch {
     return [];
   }
+}
+
+export function getDefaultPlaylist(): Playlist {
+  const list = getPlaylists();
+  const found = list.find((p) => p.id === DEFAULT_PLAYLIST_ID);
+  if (found) return found;
+
+  const defaultPl: Playlist = {
+    id: DEFAULT_PLAYLIST_ID,
+    name: DEFAULT_PLAYLIST_NAME,
+    description: 'Votre playlist par défaut en accès rapide',
+    createdAt: new Date().toISOString(),
+    episodes: [],
+  };
+  savePlaylists([defaultPl, ...list]);
+  return defaultPl;
 }
 
 export function savePlaylists(list: Playlist[]): void {
@@ -319,6 +354,14 @@ export function createPlaylist(name: string, description?: string): Playlist {
 
 export function deletePlaylist(playlistId: string): void {
   const list = getPlaylists();
+  // Ne jamais supprimer la playlist par défaut : on vide simplement ses épisodes
+  if (playlistId === DEFAULT_PLAYLIST_ID) {
+    const reset = list.map((p) =>
+      p.id === DEFAULT_PLAYLIST_ID ? { ...p, episodes: [] } : p
+    );
+    savePlaylists(reset);
+    return;
+  }
   const updated = list.filter((p) => p.id !== playlistId);
   savePlaylists(updated);
 }
@@ -342,6 +385,16 @@ export function addEpisodeToPlaylist(playlistId: string, episode: Episode): bool
   list[idx] = updatedPl;
   savePlaylists(list);
   return true;
+}
+
+export function addEpisodeToDefaultPlaylist(episode: Episode): { success: boolean; alreadyIn: boolean; playlistName: string } {
+  const def = getDefaultPlaylist();
+  const success = addEpisodeToPlaylist(def.id, episode);
+  return {
+    success,
+    alreadyIn: !success,
+    playlistName: def.name,
+  };
 }
 
 export function removeEpisodeFromPlaylist(playlistId: string, episodeId: string): void {

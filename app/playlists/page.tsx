@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Playlist, Episode } from '@/types/podcast';
-import { getPlaylists, createPlaylist, deletePlaylist, removeEpisodeFromPlaylist } from '@/lib/storage';
+import {
+  getPlaylists,
+  createPlaylist,
+  deletePlaylist,
+  removeEpisodeFromPlaylist,
+  DEFAULT_PLAYLIST_ID,
+} from '@/lib/storage';
 import { usePlayer } from '@/lib/playerContext';
 import EpisodeRow from '@/components/EpisodeRow';
 import { ListMusic, Plus, Play, Trash2, ChevronDown, ChevronUp, FolderPlus, Clock, Sparkles } from 'lucide-react';
@@ -40,10 +46,20 @@ export default function PlaylistsPage() {
   };
 
   const handleDelete = (id: string, plName: string) => {
-    if (confirm(`Supprimer la playlist « ${plName} » ?`)) {
+    const isDefault = id === DEFAULT_PLAYLIST_ID;
+    const confirmMsg = isDefault
+      ? `Vider tous les épisodes de votre playlist par défaut « ${plName} » ?`
+      : `Supprimer la playlist « ${plName} » ?`;
+
+    if (confirm(confirmMsg)) {
       deletePlaylist(id);
-      if (expandedId === id) setExpandedId(null);
-      setToast(`Playlist « ${plName} » supprimée.`);
+      if (isDefault) {
+        refreshPlaylists();
+        setToast(`Playlist par défaut vidée.`);
+      } else {
+        if (expandedId === id) setExpandedId(null);
+        setToast(`Playlist « ${plName} » supprimée.`);
+      }
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -190,6 +206,12 @@ export default function PlaylistsPage() {
                     onClick={() => setExpandedId(isExpanded ? null : pl.id)}
                   >
                     <div className="flex items-center gap-2 flex-wrap">
+                      {pl.id === DEFAULT_PLAYLIST_ID && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-400" />
+                          <span>Par défaut</span>
+                        </span>
+                      )}
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                         {pl.episodes.length} épisode{pl.episodes.length > 1 ? 's' : ''}
                       </span>
@@ -242,7 +264,7 @@ export default function PlaylistsPage() {
                       type="button"
                       onClick={() => handleDelete(pl.id, pl.name)}
                       className="p-2.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-2xl transition"
-                      title="Supprimer la playlist"
+                      title={pl.id === DEFAULT_PLAYLIST_ID ? 'Vider la playlist par défaut' : 'Supprimer la playlist'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

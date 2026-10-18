@@ -32,6 +32,7 @@ interface PlayerContextType {
   sleepTimerRemainingSec: number | null;
   isFullPlayerOpen: boolean;
   playEpisode: (episode: Episode) => void;
+  restartEpisode: (episode: Episode) => void;
   togglePlay: () => void;
   pause: () => void;
   resume: () => void;
@@ -372,6 +373,29 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [speed]
   );
 
+  const restartEpisode = useCallback(
+    (ep: Episode) => {
+      savePlaybackPosition(ep.id, 0);
+      const audio = audioRef.current;
+      if (currentEpisodeRef.current?.id === ep.id && audio) {
+        audio.currentTime = 0;
+        setCurrentTime(0);
+        if (audio.paused) {
+          audio.play().then(() => setIsPlaying(true)).catch(() => {});
+        }
+      } else {
+        playEpisode(ep);
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            setCurrentTime(0);
+          }
+        }, 150);
+      }
+    },
+    [playEpisode]
+  );
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -544,6 +568,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         sleepTimerRemainingSec,
         isFullPlayerOpen,
         playEpisode,
+        restartEpisode,
         togglePlay,
         pause,
         resume,
