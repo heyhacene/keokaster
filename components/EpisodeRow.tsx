@@ -20,6 +20,7 @@ import {
   Sparkles,
   Share2,
   MoreVertical,
+  Radio,
 } from 'lucide-react';
 import { detectSeriesPart } from '@/lib/seriesDetector';
 import {
@@ -73,6 +74,10 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [artworkError, setArtworkError] = useState(false);
+
+  const artworkSrc = (!artworkError && (episode.artworkUrl || episode.podcastArtwork)) || undefined;
+  const podcastName = episode.podcastTitle || '';
 
   // État dynamique du Stop-Pub pour ce podcast
   const [isAdBlockActive, setIsAdBlockActive] = useState<boolean>(() => {
@@ -225,30 +230,63 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
             : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800/80 hover:border-slate-700'
         }`}
       >
-        {/* GRAND BOUTON PLAY/PAUSE ULTRA ACCESSIBLE */}
+        {/* GRAND BOUTON PLAY/PAUSE AVEC POCHETTE VISIBLE */}
         <button
           type="button"
           onClick={handlePlayClick}
-          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shrink-0 transition-transform active:scale-90 flex items-center justify-center shadow-lg ${
+          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shrink-0 transition-transform active:scale-90 flex items-center justify-center shadow-lg relative overflow-hidden group/btn ${
             isCurrentlyPlaying
-              ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-purple-600/40 ring-2 ring-purple-400/50'
+              ? 'ring-2 ring-purple-400 shadow-purple-600/50'
               : isCurrent
-              ? 'bg-purple-700 text-white shadow-purple-700/30'
-              : 'bg-slate-800 text-purple-400 group-hover:bg-purple-600 group-hover:text-white shadow-black/40'
+              ? 'ring-2 ring-purple-600 shadow-purple-700/40'
+              : 'shadow-black/50 border border-slate-700/60'
           }`}
           title={isCurrentlyPlaying ? 'Mettre en pause' : 'Écouter'}
         >
-          {isCurrentlyBuffering ? (
-            <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 animate-spin text-white" />
-          ) : isCurrentlyPlaying ? (
-            <Pause className="w-7 h-7 sm:w-8 sm:h-8 fill-white" />
+          {artworkSrc ? (
+            <img
+              src={artworkSrc}
+              alt={episode.title}
+              onError={() => setArtworkError(true)}
+              className="absolute inset-0 w-full h-full object-cover group-hover/btn:scale-105 transition duration-300"
+              loading="lazy"
+            />
           ) : (
-            <Play className="w-7 h-7 sm:w-8 sm:h-8 fill-current ml-0.5" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-purple-900 via-indigo-950 to-slate-900 flex items-center justify-center">
+              <Radio className="w-6 h-6 text-purple-300/60" />
+            </div>
           )}
+
+          {/* OVERLAY SOMBRE ÉLÉGANT */}
+          <div
+            className={`absolute inset-0 transition-colors ${
+              isCurrentlyPlaying
+                ? 'bg-purple-950/60 backdrop-blur-[1px]'
+                : 'bg-black/45 group-hover/btn:bg-black/35'
+            }`}
+          />
+
+          {/* PASTILLE DE LECTURE CENTRÉE */}
+          <div className="relative z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-950/80 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 shadow-md">
+            {isCurrentlyBuffering ? (
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
+            ) : isCurrentlyPlaying ? (
+              <Pause className="w-5 h-5 fill-white" />
+            ) : (
+              <Play className="w-5 h-5 fill-white ml-0.5" />
+            )}
+          </div>
         </button>
 
         {/* CONTENU DE L'ÉPISODE */}
         <div className="min-w-0 flex-1 py-0.5">
+          {podcastName && (
+            <p className="text-[11px] font-extrabold text-purple-400 truncate mb-1 flex items-center gap-1.5">
+              <Radio className="w-3 h-3 text-purple-400 shrink-0" />
+              <span>{podcastName}</span>
+            </p>
+          )}
+
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             {episode.pubDate && (
               <span className="text-xs font-semibold text-slate-400">

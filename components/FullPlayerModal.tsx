@@ -17,6 +17,7 @@ import {
   ListPlus,
   Trash2,
   X,
+  Radio,
   Bookmark,
   Share2,
   Loader2,
@@ -474,15 +475,32 @@ export default function FullPlayerModal() {
                       setShowQueue(false);
                     }}
                   >
-                    <span className="w-6 h-6 rounded-lg bg-slate-800 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
-                      {idx + 1}
-                    </span>
+                    {/* POCHETTE DU PODCAST AVEC NUMÉRO D'ORDRE */}
+                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-slate-800 shrink-0 border border-slate-700/80 shadow-sm">
+                      {ep.artworkUrl || ep.podcastArtwork ? (
+                        <img
+                          src={ep.artworkUrl || ep.podcastArtwork}
+                          alt=""
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-tr from-purple-800 to-indigo-900 flex items-center justify-center">
+                          <Radio className="w-5 h-5 text-purple-300/60" />
+                        </div>
+                      )}
+                      <span className="absolute bottom-0.5 right-0.5 px-1 py-0.2 rounded bg-slate-950/85 text-[9px] font-mono font-bold text-purple-300 border border-purple-500/30">
+                        #{idx + 1}
+                      </span>
+                    </div>
+
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-purple-300 transition">
-                        {ep.title}
+                      <p className="text-[11px] font-bold text-purple-400 truncate flex items-center gap-1">
+                        <Radio className="w-2.5 h-2.5 shrink-0" />
+                        <span>{ep.podcastTitle || 'Podcast'}</span>
                       </p>
-                      <p className="text-[11px] text-slate-400 truncate">
-                        {ep.podcastTitle}
+                      <p className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-purple-200 transition">
+                        {ep.title}
                       </p>
                     </div>
                   </div>
