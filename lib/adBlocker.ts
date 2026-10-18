@@ -21,8 +21,8 @@ export const AD_KEYWORDS = [
 
 export const DEFAULT_GLOBAL_AD_SETTINGS: GlobalAdSettings = {
   enabled: true,
-  defaultIntroSkipSec: 30, // Saute les 30 premières secondes (intro/sponsors types) si activé
-  defaultOutroSkipSec: 30, // Saute les 30 dernières secondes (générique + autopromo)
+  defaultIntroSkipSec: 0, // Désactivé par défaut (0s) pour préserver le début réel de chaque épisode
+  defaultOutroSkipSec: 0, // Désactivé par défaut (0s)
   crowdsourcedSkipEnabled: true,
   smartKeywordDetection: true,
   showNotificationOnSkip: true,

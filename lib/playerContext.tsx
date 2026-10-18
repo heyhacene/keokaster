@@ -96,8 +96,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         adSegmentsRef.current = [];
         setAiAdResult(null);
       } else {
-        const introSec = pSettings.autoSkipIntroSec ?? gSettings.defaultIntroSkipSec;
-        const outroSec = pSettings.autoSkipOutroSec ?? gSettings.defaultOutroSkipSec;
+        const introSec = pSettings.autoSkipIntroSec ?? 0;
+        const outroSec = pSettings.autoSkipOutroSec ?? 0;
         const detectionResult = analyzeEpisodeAdsWithAI(ep, ep.chapters, introSec, outroSec);
         setAiAdResult(detectionResult);
         setAdSegments(detectionResult.segments);
@@ -296,8 +296,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const isAdBlockActive = gSettings.enabled && pSettings.adBlockEnabled !== false;
 
       if (isAdBlockActive) {
-        const introSec = pSettings.autoSkipIntroSec ?? gSettings.defaultIntroSkipSec;
-        const outroSec = pSettings.autoSkipOutroSec ?? gSettings.defaultOutroSkipSec;
+        const introSec = pSettings.autoSkipIntroSec ?? 0;
+        const outroSec = pSettings.autoSkipOutroSec ?? 0;
         detectionResult = analyzeEpisodeAdsWithAI(ep, ep.chapters, introSec, outroSec);
         segments = [...detectionResult.segments];
 
@@ -306,6 +306,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         if (localMarkers.length > 0) {
           segments.push(...localMarkers);
         }
+      } else {
+        segments = [];
+        detectionResult = null;
       }
 
       setAiAdResult(detectionResult);

@@ -266,14 +266,19 @@ function PodcastContent() {
         {/* DÉTAILS & BOUTONS */}
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-              settings.adBlockEnabled !== false
-                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                : 'bg-slate-800 text-slate-400 border-slate-700'
-            }`}>
-              <Zap className={`w-2.5 h-2.5 ${settings.adBlockEnabled !== false ? 'fill-emerald-400' : 'text-slate-500'}`} />
-              <span>{settings.adBlockEnabled !== false ? 'Anti-Pub Actif' : 'Anti-Pub Désactivé'}</span>
-            </span>
+            <button
+              type="button"
+              onClick={() => handleUpdateSettings({ adBlockEnabled: settings.adBlockEnabled === false })}
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5 transition active:scale-95 ${
+                settings.adBlockEnabled !== false
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                  : 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
+              }`}
+              title="Cliquer pour activer ou désactiver le Stop-Pub pour ce podcast"
+            >
+              <Zap className={`w-3 h-3 ${settings.adBlockEnabled !== false ? 'fill-emerald-400' : 'text-amber-500'}`} />
+              <span>{settings.adBlockEnabled !== false ? 'Anti-Pub Actif' : 'Anti-Pub Exclu'}</span>
+            </button>
             {detectedSeriesList.length > 0 && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                 <Layers className="w-2.5 h-2.5 text-amber-400" />
@@ -353,25 +358,31 @@ function PodcastContent() {
                 Paramètres Anti-Pub pour ce podcast
               </h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-300">
+            <button
+              type="button"
+              onClick={() => handleUpdateSettings({ adBlockEnabled: settings.adBlockEnabled === false })}
+              className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 transition active:scale-95 shadow-sm ${
+                settings.adBlockEnabled !== false
+                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                  : 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+              }`}
+              title={settings.adBlockEnabled !== false ? "Désactiver le Stop-Pub pour ce podcast" : "Réactiver le Stop-Pub pour ce podcast"}
+            >
+              <span className="text-xs font-bold">
                 {settings.adBlockEnabled !== false ? 'Stop-Pub Activé' : 'Exclu du Stop-Pub'}
               </span>
-              <button
-                type="button"
-                onClick={() => handleUpdateSettings({ adBlockEnabled: settings.adBlockEnabled === false })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              <div
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                   settings.adBlockEnabled !== false ? 'bg-emerald-500' : 'bg-slate-700'
                 }`}
-                title={settings.adBlockEnabled !== false ? "Désactiver le Stop-Pub pour ce podcast" : "Réactiver le Stop-Pub pour ce podcast"}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    settings.adBlockEnabled !== false ? 'translate-x-6' : 'translate-x-1'
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    settings.adBlockEnabled !== false ? 'translate-x-4.5' : 'translate-x-0.5'
                   }`}
                 />
-              </button>
-            </div>
+              </div>
+            </button>
           </div>
 
           <p className="text-[11px] text-slate-400">
@@ -392,12 +403,12 @@ function PodcastContent() {
                     type="button"
                     onClick={() => handleUpdateSettings({ autoSkipIntroSec: sec })}
                     className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition ${
-                      settings.autoSkipIntroSec === sec
-                        ? 'bg-purple-600 text-white'
+                      (settings.autoSkipIntroSec ?? 0) === sec
+                        ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/40'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >
-                    {sec}s
+                    {sec === 0 ? 'Off (0s)' : `${sec}s`}
                   </button>
                 ))}
               </div>
@@ -414,8 +425,8 @@ function PodcastContent() {
                     type="button"
                     onClick={() => handleUpdateSettings({ autoSkipOutroSec: sec })}
                     className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition ${
-                      settings.autoSkipOutroSec === sec
-                        ? 'bg-purple-600 text-white'
+                      (settings.autoSkipOutroSec ?? 0) === sec
+                        ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/40'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >

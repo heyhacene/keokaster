@@ -184,8 +184,8 @@ export function getPodcastSettings(podcastId: string): PodcastSettings {
   const global = getGlobalAdSettings();
   if (typeof window === 'undefined') {
     return {
-      autoSkipIntroSec: global.defaultIntroSkipSec,
-      autoSkipOutroSec: global.defaultOutroSkipSec,
+      autoSkipIntroSec: 0,
+      autoSkipOutroSec: 0,
       adBlockEnabled: global.enabled,
     };
   }
@@ -194,17 +194,24 @@ export function getPodcastSettings(podcastId: string): PodcastSettings {
     const map = raw ? JSON.parse(raw) : {};
     const canonical = getCanonicalPodcastId(podcastId);
     const found = map[podcastId] || (canonical ? map[canonical] : undefined);
-    if (found) return found;
+    if (found) {
+      return {
+        autoSkipIntroSec: found.autoSkipIntroSec ?? 0,
+        autoSkipOutroSec: found.autoSkipOutroSec ?? 0,
+        adBlockEnabled: found.adBlockEnabled !== undefined ? found.adBlockEnabled : global.enabled,
+        sortOrder: found.sortOrder,
+      };
+    }
 
     return {
-      autoSkipIntroSec: global.defaultIntroSkipSec,
-      autoSkipOutroSec: global.defaultOutroSkipSec,
+      autoSkipIntroSec: 0,
+      autoSkipOutroSec: 0,
       adBlockEnabled: global.enabled,
     };
   } catch {
     return {
-      autoSkipIntroSec: global.defaultIntroSkipSec,
-      autoSkipOutroSec: global.defaultOutroSkipSec,
+      autoSkipIntroSec: 0,
+      autoSkipOutroSec: 0,
       adBlockEnabled: global.enabled,
     };
   }
