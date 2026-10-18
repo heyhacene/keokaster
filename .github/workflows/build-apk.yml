@@ -196,12 +196,12 @@ jobs:
             Lecteur de podcasts moderne, souple, synchronisé et sans coupures publicitaires.
             
             ### ✨ Nouveautés majeures (Build ${{ github.run_number }}) :
-            - 🚘 **Support Natif Android Auto (Écran tactile véhicule)** : Intégration complète MediaBrowserService, affichage de KeoKaster sur le tableau de bord de votre voiture, navigation dans les podcasts et commandes sécurisées au volant et à l'écran.
-            - 🚗 **Mode Voiture Amélioré (Smartphone)** : Accès direct 🚗 sur la barre de lecture, maintien de l'écran allumé au volant (WakeLock API), sélecteur rapide de vitesse (1x, 1.2x, 1.5x) et boutons géants ultra-réactifs.
-            - 📥 **Rapatriement de podcasts universel** : Importez vos abonnements depuis Spotify, Apple Podcasts, Pocket Casts, AntennaPod, Podcast Addict via fichiers OPML standards ou en collant directement un lien.
-            - 📶 **Mode Hors-Ligne & Téléchargements** : Téléchargez vos épisodes en local pour les écouter en avion, dans le train ou le métro sans connexion ni data.
-            - 🪄 **Playlists Intelligentes Dynamiques** : 4 sélections automatiques (Nouveautés 48h, Trajet Rapide <20 min, Reprendre la lecture, Sagas multi-parties 1/4, 2/4...).
-            - ⚡ **Moteur Anti-Pub IA ZeroPub & Filtrage optimisé** : Détection sémantique, saut instantané des sponsors et exclusion sélective par podcast.
+            - 🐜 **Import OPML AntennaPod & Standard 100% Débloqué** : Correction complète de la sélection de fichier sur Android (tous les fichiers .opml sont désormais sélectionnables sans être grisés par Android SAF) + ajout d'une zone pour coller directement le contenu XML / OPML en un clic !
+            - ⚡ **Anti-Pub Radio Nova & Réseaux DAI (ZeroPub)** : Détection automatique de l'insertion publicitaire dynamique (Audiomeans, Radio Nova, Acast, Megaphone, RTL, Europe 1, RMC...) et saut instantané des tunnels publicitaires pré-roll (~32s) dès la première seconde !
+            - 🚘 **Support Natif Android Auto (Écran de bord véhicule)** : Intégration complète MediaBrowserService, KeoKaster s'affiche sur l'écran tactile de la voiture avec commandes au volant et gros boutons sécurisés.
+            - 🚗 **Mode Voiture Amélioré (Smartphone)** : Accès direct 🚗 sur la barre de lecture, maintien de l'écran allumé au volant (WakeLock), sélecteur rapide de vitesse et boutons géants.
+            - 📶 **Mode Hors-Ligne & Téléchargements** : Téléchargez vos épisodes en local pour les écouter en avion, dans le train ou le métro sans connexion.
+            - 🪄 **Playlists Intelligentes Dynamiques** : 4 sélections automatiques (Nouveautés 48h, Trajet Rapide <20 min, Reprendre la lecture, Sagas multi-parties).
             
             ### 📲 Téléchargement direct :
             - **Fichier principal** : [KeoKaster-Build-${{ github.run_number }}.apk](https://github.com/heyhacene/keokaster/releases/download/v1.0.0-build.${{ github.run_number }}/KeoKaster-Build-${{ github.run_number }}.apk)

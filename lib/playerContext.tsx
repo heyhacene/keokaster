@@ -327,17 +327,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const positions = getPlaybackPositions();
       const savedPos = positions[ep.id] || 0;
 
-      // Si la position est à 0 et qu'un saut d'intro / DAI est actif
-      const hasIntroCut = savedPos === 0 && segments.length > 0 && segments[0].type === 'intro';
-      const startPos = hasIntroCut
-        ? segments[0].endTime + 0.1
+      // Détection de tout encart publicitaire ou sponsoring initial débutant à 0s (DAI, intro ou sponsor)
+      const initialAd = segments.find((s) => s.startTime <= 1.5 && s.endTime > 3.0);
+      const hasInitialAd = savedPos === 0 && Boolean(initialAd);
+      const startPos = hasInitialAd && initialAd
+        ? initialAd.endTime + 0.1
         : savedPos;
 
-      if (hasIntroCut) {
-        recordAICutStats(segments[0].endTime);
-        const introLabel = segments[0].label || '⚡ Tunnel publicitaire sauté par l\'IA';
+      if (hasInitialAd && initialAd) {
+        recordAICutStats(initialAd.endTime);
+        const introLabel = initialAd.label || '⚡ Publicité pré-roll sautée par l\'IA';
         setLastSkippedAd({ label: introLabel, timestamp: Date.now() });
-        setTimeout(() => setLastSkippedAd(null), 4000);
+        setTimeout(() => setLastSkippedAd(null), 4500);
       }
 
       getOfflineAudioUrl(ep.id).then((offlineUrl) => {
@@ -371,6 +372,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         audio.play().then(() => {
           setIsPlaying(true);
           setIsLoadingAudio(false);
+          // Sécurité additionnelle : si le navigateur a réinitialisé la position à 0 au démarrage
+          if (startPos > 0 && Math.abs(audio.currentTime - startPos) > 1.5) {
+            try {
+              audio.currentTime = startPos;
+              setCurrentTime(startPos);
+            } catch {}
+          }
         }).catch((err) => {
           console.warn('Erreur lecture audio play():', err);
           setIsLoadingAudio(false);
@@ -388,20 +396,32 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     (ep: Episode) => {
       savePlaybackPosition(ep.id, 0);
       const audio = audioRef.current;
+      const pSettings = getPodcastSettings(ep.podcastId);
+      const gSettings = getGlobalAdSettings();
+      const isAdBlockActive = gSettings.enabled && pSettings.adBlockEnabled !== false;
+
+      let targetTime = 0;
+      if (isAdBlockActive) {
+        const detection = analyzeEpisodeAdsWithAI(
+          ep,
+          ep.chapters,
+          pSettings.autoSkipIntroSec ?? 0,
+          pSettings.autoSkipOutroSec ?? 0
+        );
+        const initialAd = detection.segments.find((s) => s.startTime <= 1.5 && s.endTime > 3.0);
+        if (initialAd) {
+          targetTime = initialAd.endTime + 0.1;
+        }
+      }
+
       if (currentEpisodeRef.current?.id === ep.id && audio) {
-        audio.currentTime = 0;
-        setCurrentTime(0);
+        audio.currentTime = targetTime;
+        setCurrentTime(targetTime);
         if (audio.paused) {
           audio.play().then(() => setIsPlaying(true)).catch(() => {});
         }
       } else {
         playEpisode(ep);
-        setTimeout(() => {
-          if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            setCurrentTime(0);
-          }
-        }, 150);
       }
     },
     [playEpisode]

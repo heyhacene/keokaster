@@ -21,10 +21,14 @@ export function parseOpmlXml(xmlText: string): ParsedOpmlItem[] {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlText, 'text/xml');
-    const outlines = doc.querySelectorAll('outline');
+    const parserError = doc.querySelector('parsererror');
+    if (parserError) {
+      throw new Error(parserError.textContent || 'XML parsing error');
+    }
 
+    const outlines = doc.querySelectorAll('outline');
     outlines.forEach((el) => {
-      const xmlUrl = el.getAttribute('xmlUrl') || el.getAttribute('url');
+      const xmlUrl = el.getAttribute('xmlUrl') || el.getAttribute('url') || el.getAttribute('xmlurl');
       if (xmlUrl && !seenUrls.has(xmlUrl.trim())) {
         const feedUrl = xmlUrl.trim();
         seenUrls.add(feedUrl);
@@ -51,7 +55,7 @@ export function parseOpmlXml(xmlText: string): ParsedOpmlItem[] {
   } catch (e) {
     console.warn('Erreur analyse OPML DOMParser, fallback regex:', e);
     // Fallback par regex si le XML a des entités mal formées
-    const outlineRegex = /<outline[^>]+xmlUrl=["']([^"']+)["'][^>]*>/gi;
+    const outlineRegex = /<outline[^>]+(?:xmlUrl|url|xmlurl)=["']([^"']+)["'][^>]*>/gi;
     let match: RegExpExecArray | null;
     while ((match = outlineRegex.exec(xmlText)) !== null) {
       const feedUrl = match[1]?.trim();

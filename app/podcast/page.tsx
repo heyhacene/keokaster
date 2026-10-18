@@ -13,6 +13,7 @@ import {
 } from '@/lib/storage';
 import { usePlayer } from '@/lib/playerContext';
 import { detectSeriesGroups, sortEpisodes, SeriesGroup } from '@/lib/seriesDetector';
+import { detectDAINetwork } from '@/lib/aiAdAnalyzer';
 import {
   Loader2,
   Plus,
@@ -56,6 +57,12 @@ function PodcastContent() {
     autoSkipOutroSec: 30,
     adBlockEnabled: true,
   });
+
+  const daiInfo = useMemo(() => {
+    if (!podcast) return null;
+    const sampleAudio = episodes[0]?.audioUrl;
+    return detectDAINetwork(sampleAudio, podcast.feedUrl, podcast.title, podcast.author);
+  }, [podcast, episodes]);
 
   const {
     currentEpisode,
@@ -390,6 +397,18 @@ function PodcastContent() {
               ? '⚠️ Ce podcast est exclu du Stop-Pub : aucune coupure publicitaire ou sponsor ne sera sauté.'
               : '⚡ Moteur ZeroPub actif : détection et coupure automatique des publicités audio et sponsors.'}
           </p>
+
+          {daiInfo?.isDAI && settings.adBlockEnabled !== false && (
+            <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex items-start gap-2.5 text-xs text-purple-200">
+              <Zap className="w-4 h-4 text-purple-400 shrink-0 mt-0.5 fill-purple-400" />
+              <div>
+                <span className="font-bold text-white">Réseau {daiInfo.networkName} identifié</span>
+                <p className="text-[11px] text-purple-300/80 mt-0.5 leading-relaxed">
+                  Ce podcast utilise l'insertion publicitaire dynamique. Les spots pré-roll (~{daiInfo.defaultPreRollSec}s) sont coupés automatiquement au démarrage.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>

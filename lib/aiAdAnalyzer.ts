@@ -45,6 +45,135 @@ const SPONSOR_PATTERNS = [
   /(?:pause publicitaire|coupure publicitaire|l'heure de la réclame)/i,
 ];
 
+export interface DAIDetectionResult {
+  isDAI: boolean;
+  networkName: string;
+  defaultPreRollSec: number;
+}
+
+/**
+ * Détecte si le flux ou le fichier audio provient d'une plateforme d'insertion publicitaire dynamique (DAI)
+ * ou d'une radio commerciale (ex: Radio Nova, Audiomeans, Acast, Megaphone, RTL, Europe 1...)
+ */
+export function detectDAINetwork(
+  audioUrl?: string,
+  feedUrl?: string,
+  podcastTitle?: string,
+  author?: string
+): DAIDetectionResult {
+  const url = (audioUrl || '').toLowerCase();
+  const feed = (feedUrl || '').toLowerCase();
+  const title = (podcastTitle || '').toLowerCase();
+  const auth = (author || '').toLowerCase();
+  const combined = `${url} ${feed} ${title} ${auth}`;
+
+  // 1. Radio Nova & Combat Media & Audiomeans
+  if (
+    url.includes('audiomeans.fr') ||
+    feed.includes('audiomeans.fr') ||
+    combined.includes('radio nova') ||
+    combined.includes('nova le matin') ||
+    combined.includes('la derniere') ||
+    combined.includes('la dernière') ||
+    title.startsWith('nova ') ||
+    combined.includes('combat media') ||
+    combined.includes('les inrocks')
+  ) {
+    return {
+      isDAI: true,
+      networkName: 'Radio Nova / Audiomeans',
+      defaultPreRollSec: 32,
+    };
+  }
+
+  // 2. Acast
+  if (url.includes('acast.com') || feed.includes('acast.com')) {
+    return {
+      isDAI: true,
+      networkName: 'Acast',
+      defaultPreRollSec: 30,
+    };
+  }
+
+  // 3. Megaphone (Spotify)
+  if (url.includes('megaphone.fm') || feed.includes('megaphone.fm')) {
+    return {
+      isDAI: true,
+      networkName: 'Megaphone',
+      defaultPreRollSec: 30,
+    };
+  }
+
+  // 4. AdsWizz
+  if (url.includes('adswizz.com') || feed.includes('adswizz.com')) {
+    return {
+      isDAI: true,
+      networkName: 'AdsWizz',
+      defaultPreRollSec: 30,
+    };
+  }
+
+  // 5. Targetspot
+  if (url.includes('targetspot.com') || feed.includes('targetspot.com')) {
+    return {
+      isDAI: true,
+      networkName: 'Targetspot',
+      defaultPreRollSec: 30,
+    };
+  }
+
+  // 6. Triton Digital & Omny Studio & StreamTheWorld
+  if (
+    url.includes('tritondigital.com') ||
+    url.includes('streamtheworld.com') ||
+    url.includes('omny.fm') ||
+    url.includes('omnystudio.com')
+  ) {
+    return {
+      isDAI: true,
+      networkName: 'Triton Digital',
+      defaultPreRollSec: 30,
+    };
+  }
+
+  // 7. Ausha
+  if (url.includes('ausha.co') || feed.includes('ausha.co')) {
+    return {
+      isDAI: true,
+      networkName: 'Ausha',
+      defaultPreRollSec: 25,
+    };
+  }
+
+  // 8. Podtrac / Art19 / Spreaker
+  if (url.includes('podtrac.com') || url.includes('art19.com') || url.includes('spreaker.com')) {
+    return {
+      isDAI: true,
+      networkName: 'Réseau DAI',
+      defaultPreRollSec: 30,
+    };
+  }
+
+  // 9. Radios commerciales françaises avec spots audio automatiques injectés
+  if (
+    /\b(rtl|rmc|europe 1|nrj|nostalgie|ch[ée]rie fm|fun radio|rires et chansons)\b/i.test(
+      `${title} ${auth}`
+    )
+  ) {
+    return {
+      isDAI: true,
+      networkName: 'Radio commerciale',
+      defaultPreRollSec: 30,
+    };
+  }
+
+  return {
+    isDAI: false,
+    networkName: '',
+    defaultPreRollSec: 0,
+  };
+}
+
 /**
  * Extrait les timestamps explicites de coupures pub dans la description textuelle
  * Ex: "02:15 - Sponsor HelloFresh" ou "Pub (01:30 - 02:45)"
@@ -90,12 +219,24 @@ function extractAdTimestampsFromText(text: string, totalDurationSec: number): Ad
 export function analyzeEpisodeAdsWithAI(
   episode: Episode,
   chapters?: Chapter[],
-  introSkipSec: number = 30,
-  outroSkipSec: number = 30
+  introSkipSec: number = 0,
+  outroSkipSec: number = 0,
+  podcastFeedUrl?: string
 ): AIAdDetectionResult {
   const detectedSponsors: string[] = [];
   const segments: AdSegment[] = [];
   const fullText = `${episode.title || ''} ${episode.description || ''}`;
+
+  // 0. Détection DAI (Dynamic Ad Insertion) & Radios commerciales (Radio Nova, Audiomeans, Acast, etc.)
+  const dai = detectDAINetwork(
+    episode.audioUrl,
+    podcastFeedUrl,
+    episode.podcastTitle,
+    episode.author
+  );
+  if (dai.isDAI && !detectedSponsors.includes(dai.networkName)) {
+    detectedSponsors.push(dai.networkName);
+  }
 
   // 1. Analyse NLP des sponsors connus et patterns dans le texte
   for (const sponsor of KNOWN_SPONSORS) {
@@ -136,10 +277,10 @@ export function analyzeEpisodeAdsWithAI(
     });
   }
 
-  // 4. Saut d'introduction (uniquement si configuré expressément par l'utilisateur > 0s)
-  if (introSkipSec > 0) {
-    const hasPreRoll = segments.some((s) => s.startTime < 15);
-    if (!hasPreRoll) {
+  // 4. Coupure intelligente de pré-roll (priorité au réglage personnalisé > 0, sinon DAI automatique)
+  const hasPreRoll = segments.some((s) => s.startTime < 15);
+  if (!hasPreRoll) {
+    if (introSkipSec > 0) {
       const sponsorBrand = detectedSponsors[0] ? ` (${detectedSponsors[0]})` : '';
       segments.push({
         id: `ai-intro-${episode.id}`,
@@ -147,6 +288,14 @@ export function analyzeEpisodeAdsWithAI(
         endTime: introSkipSec,
         type: 'intro',
         label: `⚡ Saut d'introduction configuré (${introSkipSec}s)${sponsorBrand}`,
+      });
+    } else if (dai.isDAI && dai.defaultPreRollSec > 0) {
+      segments.push({
+        id: `ai-dai-preroll-${episode.id}`,
+        startTime: 0,
+        endTime: dai.defaultPreRollSec,
+        type: 'sponsor',
+        label: `⚡ Coupure IA : Publicité pré-roll (${dai.networkName} ~${dai.defaultPreRollSec}s)`,
       });
     }
   }

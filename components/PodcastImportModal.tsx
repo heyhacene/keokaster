@@ -44,25 +44,30 @@ export default function PodcastImportModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [urlInput, setUrlInput] = useState('');
+  const [opmlTextInput, setOpmlTextInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processOpmlText = async (text: string) => {
+    if (!text || !text.trim()) {
+      setStatusMsg({
+        type: 'error',
+        text: 'Veuillez coller ou sélectionner un contenu OPML valide.',
+      });
+      return;
+    }
 
     setIsProcessing(true);
-    setStatusMsg({ type: 'info', text: 'Lecture et analyse du fichier OPML...' });
+    setStatusMsg({ type: 'info', text: 'Lecture et analyse du contenu OPML...' });
 
     try {
-      const text = await file.text();
       const items = parseOpmlXml(text);
 
       if (items.length === 0) {
         setStatusMsg({
           type: 'error',
-          text: 'Aucun podcast valide trouvé dans ce fichier OPML. Vérifiez le format.',
+          text: 'Aucun podcast valide trouvé dans ce contenu OPML. Vérifiez le format du fichier ou du texte.',
         });
         setIsProcessing(false);
         return;
@@ -98,14 +103,31 @@ export default function PodcastImportModal({
         text: `🎉 ${newPodcasts.length} nouveau(x) podcast(s) importé(s) avec succès ! (${items.length - newPodcasts.length} étaient déjà présents).`,
       });
 
+      setOpmlTextInput('');
       onImportSuccess?.(newPodcasts.length);
     } catch (err: any) {
       setStatusMsg({
         type: 'error',
-        text: `Erreur lors de l'import : ${err.message || 'Fichier non lisible'}`,
+        text: `Erreur lors de l'import : ${err.message || 'Contenu non lisible'}`,
       });
     } finally {
       setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      await processOpmlText(text);
+    } catch (err: any) {
+      setStatusMsg({
+        type: 'error',
+        text: `Impossible de lire le fichier sélectionné : ${err.message}`,
+      });
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -325,25 +347,50 @@ export default function PodcastImportModal({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".opml,.xml,text/xml,application/xml"
+                accept="*/*"
                 onChange={handleFileUpload}
                 className="hidden"
                 id="opml-file-input"
               />
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isProcessing}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition active:scale-95 disabled:opacity-50"
-              >
-                {isProcessing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-                <span>Choisir le fichier OPML</span>
-              </button>
+              <div className="flex flex-col items-center gap-2">
+                <label
+                  htmlFor="opml-file-input"
+                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition active:scale-95 cursor-pointer ${
+                    isProcessing ? 'opacity-50 pointer-events-none' : ''
+                  }`}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  <span>Sélectionner le fichier (Tous fichiers / .opml)</span>
+                </label>
+              </div>
+
+              {/* SECTION COLLER DIRECTEMENT LE CONTENU OPML */}
+              <div className="pt-3 border-t border-slate-800/80 text-left space-y-2">
+                <label className="text-[11px] font-bold text-slate-300 block">
+                  📋 Ou collez directement le texte OPML (ex: export AntennaPod) :
+                </label>
+                <textarea
+                  value={opmlTextInput}
+                  onChange={(e) => setOpmlTextInput(e.target.value)}
+                  placeholder="Collez ici le contenu XML ou OPML copié depuis AntennaPod ou un fichier texte..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700/80 text-[11px] text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => processOpmlText(opmlTextInput)}
+                  disabled={isProcessing || !opmlTextInput.trim()}
+                  className="w-full py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600 border border-purple-500/40 hover:border-purple-500 disabled:opacity-40 text-purple-200 hover:text-white text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Importer le texte collé</span>
+                </button>
+              </div>
             </div>
 
             <p className="text-[11px] text-slate-500 leading-relaxed text-center">
