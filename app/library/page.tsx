@@ -22,6 +22,13 @@ export default function LibraryPage() {
 
   useEffect(() => {
     refreshData();
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'queue' || tab === 'playlists' || tab === 'subs') {
+        setActiveTab(tab as any);
+      }
+    }
     window.addEventListener('keokaster_subs_changed', refreshData);
     window.addEventListener('keokaster_playlists_changed', refreshData);
     return () => {
@@ -86,7 +93,7 @@ export default function LibraryPage() {
           }`}
         >
           <ListMusic className="w-4 h-4" />
-          <span>À écouter ensuite ({queue.length})</span>
+          <span>File d'attente ({queue.length})</span>
         </button>
       </div>
 

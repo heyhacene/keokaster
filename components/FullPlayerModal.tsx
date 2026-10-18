@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { usePlayer } from '@/lib/playerContext';
 import {
   ChevronDown,
@@ -13,6 +14,9 @@ import {
   Moon,
   Gauge,
   ListMusic,
+  ListPlus,
+  Trash2,
+  X,
   Bookmark,
   Share2,
   Loader2,
@@ -46,11 +50,14 @@ export default function FullPlayerModal() {
     currentTime,
     duration,
     speed,
+    queue,
     adSegments,
     aiAdResult,
     sleepTimerRemainingSec,
     isFullPlayerOpen,
     togglePlay,
+    playEpisode,
+    removeFromQueue,
     seekTo,
     skipForward,
     skipBackward,
@@ -64,6 +71,7 @@ export default function FullPlayerModal() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showSleepMenu, setShowSleepMenu] = useState(false);
   const [showChapters, setShowChapters] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
 
   if (!isFullPlayerOpen || !currentEpisode) return null;
 
@@ -358,6 +366,26 @@ export default function FullPlayerModal() {
           )}
         </div>
 
+        {/* FILE D'ATTENTE */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowQueue(!showQueue);
+            setShowChapters(false);
+            setShowSpeedMenu(false);
+            setShowSleepMenu(false);
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+            showQueue || queue.length > 0
+              ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40 shadow-sm shadow-purple-600/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-900'
+          }`}
+          title="File d'attente (À écouter ensuite)"
+        >
+          <ListPlus className="w-3.5 h-3.5 text-purple-400" />
+          <span>File ({queue.length})</span>
+        </button>
+
         {/* CHAPITRES */}
         {currentEpisode.chapters && currentEpisode.chapters.length > 0 && (
           <div className="relative">
@@ -398,6 +426,115 @@ export default function FullPlayerModal() {
           </div>
         )}
       </div>
+
+      {/* TIROIR FILE D'ATTENTE */}
+      {showQueue && (
+        <div className="absolute inset-x-0 bottom-0 top-16 bg-slate-950/95 backdrop-blur-2xl z-50 p-4 sm:p-5 flex flex-col justify-between rounded-t-3xl border-t border-purple-500/40 shadow-2xl animate-in slide-in-from-bottom duration-200">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <ListPlus className="w-5 h-5 text-purple-400" />
+              <div>
+                <h3 className="font-extrabold text-sm sm:text-base text-white">
+                  File d'attente
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  {queue.length} épisode{queue.length > 1 ? 's' : ''} à écouter ensuite
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowQueue(false)}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto py-3 space-y-2 scrollbar-thin">
+            {queue.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 space-y-2">
+                <ListPlus className="w-10 h-10 text-slate-600 mx-auto" />
+                <p className="text-sm font-bold text-white">Votre file d'attente est vide</p>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+                  Ajoutez des épisodes avec l'icône (+) ou par appui long pour qu'ils s'enchaînent automatiquement.
+                </p>
+              </div>
+            ) : (
+              queue.map((ep, idx) => (
+                <div
+                  key={ep.id}
+                  className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3 hover:border-purple-500/30 transition group"
+                >
+                  <div
+                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                    onClick={() => {
+                      playEpisode(ep);
+                      removeFromQueue(ep.id);
+                      setShowQueue(false);
+                    }}
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-slate-800 text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-purple-300 transition">
+                        {ep.title}
+                      </p>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {ep.podcastTitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playEpisode(ep);
+                        removeFromQueue(ep.id);
+                        setShowQueue(false);
+                      }}
+                      className="p-2 text-purple-400 hover:text-white hover:bg-purple-600/30 rounded-xl transition"
+                      title="Écouter maintenant"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeFromQueue(ep.id)}
+                      className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-xl transition"
+                      title="Retirer de la file"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+            <Link
+              href="/library?tab=queue"
+              onClick={() => {
+                setShowQueue(false);
+                closeFullPlayer();
+              }}
+              className="text-xs font-bold text-purple-400 hover:text-purple-300 transition flex items-center gap-1"
+            >
+              <span>Ouvrir dans Bibliothèque →</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowQueue(false)}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ export default function PlayerBar() {
     isLoadingAudio,
     currentTime,
     duration,
+    queue,
     togglePlay,
     skipAdNow,
     skipForward,
@@ -60,9 +61,16 @@ export default function PlayerBar() {
             <h4 className="text-sm font-bold text-white truncate group-hover:text-purple-300 transition">
               {currentEpisode.title}
             </h4>
-            <p className="text-xs text-slate-400 truncate mt-0.5">
-              {currentEpisode.podcastTitle}
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-slate-400 truncate">
+                {currentEpisode.podcastTitle}
+              </p>
+              {queue.length > 0 && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-purple-500/25 text-purple-300 border border-purple-500/35 shrink-0 flex items-center gap-1">
+                  <span>+{queue.length} en attente</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
