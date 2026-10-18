@@ -12,6 +12,7 @@ import {
   savePlaybackPosition,
   getPlaybackPositions,
   getGlobalAdSettings,
+  saveGlobalAdSettings,
   getPodcastSettings,
   markEpisodePlayed,
   getQueue,
@@ -32,6 +33,12 @@ interface PlayerContextType {
   lastSkippedAd: { label: string; timestamp: number } | null;
   sleepTimerRemainingSec: number | null;
   isFullPlayerOpen: boolean;
+  quickSkipSec: number;
+  forwardSkipSec: number;
+  backwardSkipSec: number;
+  setQuickSkipSec: (sec: number) => void;
+  setForwardSkipSec: (sec: number) => void;
+  setBackwardSkipSec: (sec: number) => void;
   playEpisode: (episode: Episode) => void;
   restartEpisode: (episode: Episode) => void;
   togglePlay: () => void;
@@ -68,6 +75,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [lastSkippedAd, setLastSkippedAd] = useState<{ label: string; timestamp: number } | null>(null);
   const [sleepTimerRemainingSec, setSleepTimerRemainingSec] = useState<number | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
+
+  // Durées paramétrables des sauts de lecture et de pub
+  const [quickSkipSec, setQuickSkipSecState] = useState<number>(() => {
+    return getGlobalAdSettings().quickSkipSec || 20;
+  });
+  const [forwardSkipSec, setForwardSkipSecState] = useState<number>(() => {
+    return getGlobalAdSettings().forwardSkipSec || 30;
+  });
+  const [backwardSkipSec, setBackwardSkipSecState] = useState<number>(() => {
+    return getGlobalAdSettings().backwardSkipSec || 10;
+  });
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isSeekingRef = useRef(false);
@@ -108,6 +126,46 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('keokaster_podcast_settings_changed', onSettingsChange);
     return () => window.removeEventListener('keokaster_podcast_settings_changed', onSettingsChange);
+  }, []);
+
+  // Synchronisation des durées de sauts paramétrées
+  const setQuickSkipSec = useCallback((sec: number) => {
+    setQuickSkipSecState(sec);
+    const curr = getGlobalAdSettings();
+    saveGlobalAdSettings({ ...curr, quickSkipSec: sec });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('keokaster_skip_settings_changed', { detail: { quickSkipSec: sec } }));
+    }
+  }, []);
+
+  const setForwardSkipSec = useCallback((sec: number) => {
+    setForwardSkipSecState(sec);
+    const curr = getGlobalAdSettings();
+    saveGlobalAdSettings({ ...curr, forwardSkipSec: sec });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('keokaster_skip_settings_changed', { detail: { forwardSkipSec: sec } }));
+    }
+  }, []);
+
+  const setBackwardSkipSec = useCallback((sec: number) => {
+    setBackwardSkipSecState(sec);
+    const curr = getGlobalAdSettings();
+    saveGlobalAdSettings({ ...curr, backwardSkipSec: sec });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('keokaster_skip_settings_changed', { detail: { backwardSkipSec: sec } }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSkipChanged = () => {
+      const g = getGlobalAdSettings();
+      if (g.quickSkipSec) setQuickSkipSecState(g.quickSkipSec);
+      if (g.forwardSkipSec) setForwardSkipSecState(g.forwardSkipSec);
+      if (g.backwardSkipSec) setBackwardSkipSecState(g.backwardSkipSec);
+    };
+    window.addEventListener('keokaster_skip_settings_changed', onSkipChanged);
+    return () => window.removeEventListener('keokaster_skip_settings_changed', onSkipChanged);
   }, []);
 
   // Initialisation de l'élément Audio - UNIQUE pour toute la durée de vie de l'app
@@ -225,8 +283,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     navigator.mediaSession.setActionHandler('play', () => resume());
     navigator.mediaSession.setActionHandler('pause', () => pause());
-    navigator.mediaSession.setActionHandler('seekbackward', () => skipBackward(10));
-    navigator.mediaSession.setActionHandler('seekforward', () => skipForward(30));
+    navigator.mediaSession.setActionHandler('seekbackward', () => skipBackward(backwardSkipSec));
+    navigator.mediaSession.setActionHandler('seekforward', () => skipForward(forwardSkipSec));
     navigator.mediaSession.setActionHandler('nexttrack', () => playNextInQueue());
 
     return () => {
@@ -238,7 +296,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         navigator.mediaSession.setActionHandler('nexttrack', null);
       } catch {}
     };
-  }, [currentEpisode]);
+  }, [currentEpisode, backwardSkipSec, forwardSkipSec]);
 
   // Minuteur de mise en veille (Sleep Timer)
   useEffect(() => {
@@ -476,17 +534,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setCurrentTime(clamped);
   }, []);
 
-  const skipForward = useCallback((sec = 30) => {
+  const skipForward = useCallback((sec?: number) => {
     const audio = audioRef.current;
     if (!audio) return;
-    seekTo(audio.currentTime + sec);
-  }, [seekTo]);
+    const amount = sec ?? forwardSkipSec;
+    seekTo(audio.currentTime + amount);
+  }, [seekTo, forwardSkipSec]);
 
-  const skipBackward = useCallback((sec = 10) => {
+  const skipBackward = useCallback((sec?: number) => {
     const audio = audioRef.current;
     if (!audio) return;
-    seekTo(audio.currentTime - sec);
-  }, [seekTo]);
+    const amount = sec ?? backwardSkipSec;
+    seekTo(audio.currentTime - amount);
+  }, [seekTo, backwardSkipSec]);
 
   const setSpeed = useCallback((newSpeed: number) => {
     setSpeedState(newSpeed);
@@ -503,34 +563,36 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Bouton "Sauter la pub (+60s)" ou segment
+  // Bouton "Sauter la pub (+Xs)" ou segment
   const skipAdNow = useCallback(
-    (secondsToSkip = 60) => {
-      skipForward(secondsToSkip);
-      recordAICutStats(secondsToSkip);
-      setLastSkippedAd({ label: `⚡ Pub passée (+${secondsToSkip}s)`, timestamp: Date.now() });
+    (secondsToSkip?: number) => {
+      const amount = secondsToSkip ?? quickSkipSec;
+      skipForward(amount);
+      recordAICutStats(amount);
+      setLastSkippedAd({ label: `⚡ Pub passée (+${amount}s)`, timestamp: Date.now() });
       setTimeout(() => setLastSkippedAd(null), 3000);
     },
-    [skipForward]
+    [skipForward, quickSkipSec]
   );
 
-  // Bouton "Marquer les 60s comme pub pour toujours"
+  // Bouton "Marquer le passage comme pub pour toujours"
   const markCurrentTimeAsAd = useCallback(() => {
     if (!currentEpisode) return;
     const cur = currentTime;
+    const durationToCut = Math.max(10, quickSkipSec);
     const newSegment: AdSegment = {
       id: `manual_${Date.now()}`,
-      startTime: Math.max(0, cur - 10),
-      endTime: cur + 50, // saute 60 secondes au total
+      startTime: Math.max(0, cur - 5),
+      endTime: cur + (durationToCut - 5),
       type: 'manual',
-      label: 'Segment publicitaire signalé',
+      label: `Segment publicitaire (+${durationToCut}s)`,
     };
     saveLocalAdMarker(currentEpisode.id, newSegment);
     setAdSegments((prev) => [...prev, newSegment]);
-    seekTo(cur + 50.1);
-    setLastSkippedAd({ label: '⚡ Pub signalée & sautée avec succès !', timestamp: Date.now() });
+    seekTo(newSegment.endTime + 0.1);
+    setLastSkippedAd({ label: `⚡ Pub signalée & sautée (+${durationToCut}s) !`, timestamp: Date.now() });
     setTimeout(() => setLastSkippedAd(null), 3500);
-  }, [currentEpisode, currentTime, seekTo]);
+  }, [currentEpisode, currentTime, quickSkipSec, seekTo]);
 
   const addToQueue = useCallback((ep: Episode) => {
     setQueueState((prev) => {
@@ -615,6 +677,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         playNextInQueue,
         playSeries,
         enqueueSeries,
+        quickSkipSec,
+        forwardSkipSec,
+        backwardSkipSec,
+        setQuickSkipSec,
+        setForwardSkipSec,
+        setBackwardSkipSec,
         openFullPlayer: () => setIsFullPlayerOpen(true),
         closeFullPlayer: () => setIsFullPlayerOpen(false),
       }}

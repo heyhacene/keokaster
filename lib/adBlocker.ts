@@ -26,6 +26,9 @@ export const DEFAULT_GLOBAL_AD_SETTINGS: GlobalAdSettings = {
   crowdsourcedSkipEnabled: true,
   smartKeywordDetection: true,
   showNotificationOnSkip: true,
+  quickSkipSec: 20, // 20s par défaut pour le saut rapide de pub (paramétrable 10, 20, 30, etc.)
+  forwardSkipSec: 30,
+  backwardSkipSec: 10,
 };
 
 const LOCAL_AD_MARKERS_KEY = 'keokaster_local_ad_markers_v1';

@@ -40,6 +40,8 @@ import {
   Clock,
   Radio,
   HardDriveDownload,
+  RotateCcw,
+  RotateCw,
 } from 'lucide-react';
 import PodcastImportModal from '@/components/PodcastImportModal';
 
@@ -80,8 +82,10 @@ export default function SettingsPage() {
 
     // Écouter les mises à jour des statistiques en temps réel
     const onStatsUpdated = () => setAiStats(getAICutStats());
+    const onSkipChanged = () => setSettings(getGlobalAdSettings());
     window.addEventListener('keokaster_stats_updated', onStatsUpdated);
     window.addEventListener('keokaster_podcast_settings_changed', refreshExcluded);
+    window.addEventListener('keokaster_skip_settings_changed', onSkipChanged);
 
     // Vérifier silencieusement les mises à jour au chargement
     fetchLatestKeoKasterApk().then((rel) => {
@@ -91,6 +95,7 @@ export default function SettingsPage() {
     return () => {
       window.removeEventListener('keokaster_stats_updated', onStatsUpdated);
       window.removeEventListener('keokaster_podcast_settings_changed', refreshExcluded);
+      window.removeEventListener('keokaster_skip_settings_changed', onSkipChanged);
     };
   }, []);
 
@@ -186,6 +191,9 @@ export default function SettingsPage() {
     saveGlobalAdSettings(updated);
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2000);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('keokaster_skip_settings_changed', { detail: { [key]: value } }));
+    }
   };
 
   return (
@@ -457,6 +465,99 @@ export default function SettingsPage() {
           <p className="text-[11px] text-slate-400 leading-relaxed">
             Reconnaissance automatique des sponsors (HelloFresh, NordVPN, codes promos), injection dynamique (Acast, Megaphone, Ausha) et coupure instantanée de la piste sonore.
           </p>
+        </div>
+
+        {/* BOUTON SAUT DE PUB RAPIDE (ZAP) - CONFIGURABLE 10s, 20s, 30s, etc. */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-950 to-orange-950/40 border border-amber-500/40 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <span className="text-xs font-bold text-white">Bouton Saut de Pub rapide (Zap)</span>
+            </div>
+            <span className="text-xs font-mono font-extrabold text-amber-300 px-2.5 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/30">
+              +{settings.quickSkipSec || 20}s
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Durée du saut appliquée lorsque vous appuyez sur le bouton Saut de pub dans le lecteur, la barre du bas et le Mode Voiture.
+          </p>
+          <div className="grid grid-cols-6 gap-1.5 pt-1">
+            {[10, 15, 20, 30, 45, 60].map((sec) => (
+              <button
+                key={sec}
+                type="button"
+                onClick={() => updateSetting('quickSkipSec', sec)}
+                className={`py-1.5 rounded-xl text-xs font-mono font-bold transition active:scale-95 ${
+                  (settings.quickSkipSec || 20) === sec
+                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/30 ring-2 ring-amber-300'
+                    : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                {sec}s
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* AVANCE ET RETOUR RAPIDE */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* RETOUR RAPIDE */}
+          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                <span>Bouton Retour rapide</span>
+              </span>
+              <span className="text-xs font-mono font-bold text-purple-400">
+                -{settings.backwardSkipSec || 10}s
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              {[5, 10, 15, 20, 30].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => updateSetting('backwardSkipSec', sec)}
+                  className={`py-1 rounded-lg text-xs font-mono font-bold transition ${
+                    (settings.backwardSkipSec || 10) === sec
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* AVANCE RAPIDE */}
+          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <RotateCw className="w-3.5 h-3.5 text-slate-400" />
+                <span>Bouton Avance rapide</span>
+              </span>
+              <span className="text-xs font-mono font-bold text-purple-400">
+                +{settings.forwardSkipSec || 30}s
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              {[10, 15, 20, 30, 45].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => updateSetting('forwardSkipSec', sec)}
+                  className={`py-1 rounded-lg text-xs font-mono font-bold transition ${
+                    (settings.forwardSkipSec || 30) === sec
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* SAUTS D'INTRO / OUTRO */}

@@ -64,6 +64,9 @@ export interface GlobalAdSettings {
   crowdsourcedSkipEnabled: boolean;
   smartKeywordDetection: boolean;
   showNotificationOnSkip: boolean;
+  quickSkipSec?: number;
+  forwardSkipSec?: number;
+  backwardSkipSec?: number;
 }
 
 export interface Playlist {

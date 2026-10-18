@@ -49,6 +49,10 @@ export default function CarModeModal({ isOpen, onClose }: CarModeModalProps) {
     skipForward,
     skipBackward,
     skipAdNow,
+    quickSkipSec,
+    setQuickSkipSec,
+    forwardSkipSec,
+    backwardSkipSec,
     playNextInQueue,
     queue,
   } = usePlayer();
@@ -169,23 +173,43 @@ export default function CarModeModal({ isOpen, onClose }: CarModeModalProps) {
         {/* BOUTON SAUT DE PUB GÉANT */}
         <button
           type="button"
-          onClick={() => skipAdNow(60)}
+          onClick={() => skipAdNow()}
           className="w-full py-5 rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-lg sm:text-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-amber-500/40 active:scale-95 transition"
         >
           <Zap className="w-7 h-7 fill-slate-950" />
-          <span>SAUTER LA PUB (+60s)</span>
+          <span>SAUTER LA PUB (+{quickSkipSec}s)</span>
         </button>
 
-        {/* RANGÉE CENTRALE : -15s / PLAY GÉANT / +30s */}
+        {/* RÉGLAGE RAPIDE DE LA DURÉE DU SAUT DE PUB AU VOLANT */}
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-xs text-slate-400 font-semibold mr-1">Régler saut pub :</span>
+          {[10, 20, 30, 60].map((sec) => (
+            <button
+              key={sec}
+              type="button"
+              onClick={() => setQuickSkipSec(sec)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition active:scale-95 ${
+                quickSkipSec === sec
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/40 ring-2 ring-amber-300'
+                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              +{sec}s
+            </button>
+          ))}
+        </div>
+
+        {/* RANGÉE CENTRALE : RECULER / PLAY GÉANT / AVANCER */}
         <div className="grid grid-cols-3 gap-3 items-center">
-          {/* -15s */}
+          {/* RECULER */}
           <button
             type="button"
-            onClick={() => skipBackward(15)}
+            onClick={() => skipBackward()}
             className="h-20 sm:h-24 rounded-3xl bg-slate-900 hover:bg-slate-850 border-2 border-slate-800 text-white flex flex-col items-center justify-center active:scale-95 transition"
+            title={`Reculer de ${backwardSkipSec}s`}
           >
             <RotateCcw className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-xs sm:text-sm font-mono font-bold mt-1">-15s</span>
+            <span className="text-xs sm:text-sm font-mono font-bold mt-1">-{backwardSkipSec}s</span>
           </button>
 
           {/* GROS BOUTON PLAY/PAUSE */}
@@ -207,14 +231,15 @@ export default function CarModeModal({ isOpen, onClose }: CarModeModalProps) {
             )}
           </button>
 
-          {/* +30s */}
+          {/* AVANCER */}
           <button
             type="button"
-            onClick={() => skipForward(30)}
+            onClick={() => skipForward()}
             className="h-20 sm:h-24 rounded-3xl bg-slate-900 hover:bg-slate-850 border-2 border-slate-800 text-white flex flex-col items-center justify-center active:scale-95 transition"
+            title={`Avancer de ${forwardSkipSec}s`}
           >
             <RotateCw className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-xs sm:text-sm font-mono font-bold mt-1">+30s</span>
+            <span className="text-xs sm:text-sm font-mono font-bold mt-1">+{forwardSkipSec}s</span>
           </button>
         </div>
 

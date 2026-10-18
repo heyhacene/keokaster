@@ -68,6 +68,10 @@ export default function FullPlayerModal() {
     setSleepTimer,
     skipAdNow,
     markCurrentTimeAsAd,
+    quickSkipSec,
+    setQuickSkipSec,
+    forwardSkipSec,
+    backwardSkipSec,
     closeFullPlayer,
   } = usePlayer();
 
@@ -247,15 +251,15 @@ export default function FullPlayerModal() {
 
         {/* COMMANDES PRINCIPALES - GROS BOUTONS ACCESSIBLES */}
         <div className="flex items-center justify-center gap-6 sm:gap-10 mb-6">
-          {/* -10S */}
+          {/* RECULER RAPIDE */}
           <button
             type="button"
-            onClick={() => skipBackward(10)}
+            onClick={() => skipBackward()}
             className="w-16 h-16 rounded-3xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition active:scale-90 flex flex-col items-center justify-center shadow-md"
-            title="Reculer de 10s"
+            title={`Reculer de ${backwardSkipSec}s`}
           >
             <RotateCcw className="w-7 h-7" />
-            <span className="text-[11px] font-mono font-bold mt-0.5">10s</span>
+            <span className="text-[11px] font-mono font-bold mt-0.5">{backwardSkipSec}s</span>
           </button>
 
           {/* PLAY / PAUSE GÉANT AVEC RETOUR CHARGEMENT */}
@@ -274,27 +278,27 @@ export default function FullPlayerModal() {
             )}
           </button>
 
-          {/* +30S */}
+          {/* AVANCER RAPIDE */}
           <button
             type="button"
-            onClick={() => skipForward(30)}
+            onClick={() => skipForward()}
             className="w-16 h-16 rounded-3xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition active:scale-90 flex flex-col items-center justify-center shadow-md"
-            title="Avancer de 30s"
+            title={`Avancer de ${forwardSkipSec}s`}
           >
             <RotateCw className="w-7 h-7" />
-            <span className="text-[11px] font-mono font-bold mt-0.5">30s</span>
+            <span className="text-[11px] font-mono font-bold mt-0.5">{forwardSkipSec}s</span>
           </button>
         </div>
 
         {/* BOUTONS DÉDIÉS DU MOTEUR ANTI-PUB */}
-        <div className="w-full grid grid-cols-2 gap-3 mb-4">
+        <div className="w-full grid grid-cols-2 gap-3 mb-2.5">
           <button
             type="button"
-            onClick={() => skipAdNow(60)}
+            onClick={() => skipAdNow()}
             className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/50 text-amber-300 text-sm font-extrabold flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-amber-950/30"
           >
             <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />
-            <span>Sauter pub (+60s)</span>
+            <span>Sauter pub (+{quickSkipSec}s)</span>
           </button>
 
           <button
@@ -306,6 +310,30 @@ export default function FullPlayerModal() {
             <ShieldAlert className="w-5 h-5 text-purple-400" />
             <span>Marquer pub</span>
           </button>
+        </div>
+
+        {/* SÉLECTEUR RAPIDE DE DURÉE DU SAUT DE PUB */}
+        <div className="w-full flex items-center justify-between px-3 py-2 rounded-2xl bg-slate-900/80 border border-slate-800/80 mb-4">
+          <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>Régler saut pub :</span>
+          </span>
+          <div className="flex items-center gap-1.5">
+            {[10, 20, 30, 60].map((sec) => (
+              <button
+                key={sec}
+                type="button"
+                onClick={() => setQuickSkipSec(sec)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition active:scale-95 ${
+                  quickSkipSec === sec
+                    ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                    : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-750'
+                }`}
+              >
+                +{sec}s
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
