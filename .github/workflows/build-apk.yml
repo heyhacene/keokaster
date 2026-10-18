@@ -95,6 +95,20 @@ jobs:
           sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />' android/app/src/main/AndroidManifest.xml
           sed -i 's/<application /<application android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
 
+      - name: Intégration Native Android Auto (MediaBrowserService & Écran de bord)
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          mkdir -p android/app/src/main/res/drawable
+          mkdir -p android/app/src/main/java/fr/keo/kaster
+
+          cp -r android-auto-setup/res/xml/* android/app/src/main/res/xml/
+          cp -r android-auto-setup/res/drawable/* android/app/src/main/res/drawable/
+          cp -r android-auto-setup/java/fr/keo/kaster/* android/app/src/main/java/fr/keo/kaster/
+
+          sed -i '/<\/application>/i \        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />\n        <meta-data android:name="com.google.android.gms.car.notification.SmallIcon" android:resource="@mipmap/ic_launcher" />\n        <service android:name="fr.keo.kaster.KeoMediaBrowserService" android:exported="true">\n            <intent-filter>\n                <action android:name="android.media.browse.MediaBrowserService" />\n            </intent-filter>\n        </service>' android/app/src/main/AndroidManifest.xml
+
+          sed -i '/dependencies {/a \    implementation "androidx.media:media:1.7.0"' android/app/build.gradle
+
       - name: Configuration de la version Android
         run: |
           sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
@@ -182,9 +196,10 @@ jobs:
             Lecteur de podcasts moderne, souple, synchronisé et sans coupures publicitaires.
             
             ### ✨ Nouveautés majeures (Build ${{ github.run_number }}) :
+            - 🚘 **Support Natif Android Auto (Écran tactile véhicule)** : Intégration complète MediaBrowserService, affichage de KeoKaster sur le tableau de bord de votre voiture, navigation dans les podcasts et commandes sécurisées au volant et à l'écran.
+            - 🚗 **Mode Voiture Amélioré (Smartphone)** : Accès direct 🚗 sur la barre de lecture, maintien de l'écran allumé au volant (WakeLock API), sélecteur rapide de vitesse (1x, 1.2x, 1.5x) et boutons géants ultra-réactifs.
             - 📥 **Rapatriement de podcasts universel** : Importez vos abonnements depuis Spotify, Apple Podcasts, Pocket Casts, AntennaPod, Podcast Addict via fichiers OPML standards ou en collant directement un lien.
             - 📶 **Mode Hors-Ligne & Téléchargements** : Téléchargez vos épisodes en local pour les écouter en avion, dans le train ou le métro sans connexion ni data.
-            - 🚗 **Mode Voiture Sécurisé (Car Mode)** : Interface de conduite ultra-lisible avec boutons géants (Play XXL, saut pub +60s instantané, -15s/+30s).
             - 🪄 **Playlists Intelligentes Dynamiques** : 4 sélections automatiques (Nouveautés 48h, Trajet Rapide <20 min, Reprendre la lecture, Sagas multi-parties 1/4, 2/4...).
             - ⚡ **Moteur Anti-Pub IA ZeroPub & Filtrage optimisé** : Détection sémantique, saut instantané des sponsors et exclusion sélective par podcast.
             

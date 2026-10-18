@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { usePlayer } from '@/lib/playerContext';
-import { Play, Pause, Zap, FastForward, RotateCcw, RotateCw, Loader2 } from 'lucide-react';
+import { Play, Pause, Zap, FastForward, RotateCcw, RotateCw, Loader2, Car } from 'lucide-react';
+import CarModeModal from '@/components/CarModeModal';
 
 export default function PlayerBar() {
   const {
@@ -18,6 +19,8 @@ export default function PlayerBar() {
     skipBackward,
     openFullPlayer,
   } = usePlayer();
+
+  const [showCarMode, setShowCarMode] = useState(false);
 
   if (!currentEpisode) return null;
 
@@ -91,6 +94,19 @@ export default function PlayerBar() {
             <span className="font-mono">+60s</span>
           </button>
 
+          {/* ACCÈS DIRECT MODE VOITURE */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowCarMode(true);
+            }}
+            className="p-3 text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-2xl transition active:scale-90"
+            title="Ouvrir le Mode Voiture (Boutons géants conduite)"
+          >
+            <Car className="w-5 h-5 text-amber-400" />
+          </button>
+
           {/* RECULER DE 10S */}
           <button
             type="button"
@@ -124,6 +140,9 @@ export default function PlayerBar() {
           </button>
         </div>
       </div>
+
+      {/* MODALE DU MODE VOITURE */}
+      <CarModeModal isOpen={showCarMode} onClose={() => setShowCarMode(false)} />
     </div>
   );
 }

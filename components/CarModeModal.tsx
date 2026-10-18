@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePlayer } from '@/lib/playerContext';
 import {
   Play,
@@ -14,6 +14,8 @@ import {
   Loader2,
   ShieldCheck,
   ListPlus,
+  Gauge,
+  Sun,
 } from 'lucide-react';
 
 interface CarModeModalProps {
@@ -32,6 +34,8 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+const SPEED_STEPS = [1.0, 1.2, 1.5, 1.75, 2.0];
+
 export default function CarModeModal({ isOpen, onClose }: CarModeModalProps) {
   const {
     currentEpisode,
@@ -39,6 +43,8 @@ export default function CarModeModal({ isOpen, onClose }: CarModeModalProps) {
     isLoadingAudio,
     currentTime,
     duration,
+    speed,
+    setSpeed,
     togglePlay,
     skipForward,
     skipBackward,
@@ -47,7 +53,47 @@ export default function CarModeModal({ isOpen, onClose }: CarModeModalProps) {
     queue,
   } = usePlayer();
 
+  const [hasWakeLock, setHasWakeLock] = useState(false);
+
+  // Maintien de l'écran allumé au volant (WakeLock API)
+  useEffect(() => {
+    if (!isOpen) return;
+    let wakeLock: any = null;
+
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+      (navigator as any).wakeLock
+        .request('screen')
+        .then((lock: any) => {
+          wakeLock = lock;
+          setHasWakeLock(true);
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+      setHasWakeLock(false);
+    };
+  }, [isOpen]);
+
   if (!isOpen || !currentEpisode) return null;
+
+  const triggerHaptic = () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate(35);
+      } catch {}
+    }
+  };
+
+  const handleNextSpeed = () => {
+    triggerHaptic();
+    const currIdx = SPEED_STEPS.indexOf(speed);
+    const nextIdx = (currIdx + 1) % SPEED_STEPS.length;
+    setSpeed(SPEED_STEPS[nextIdx]);
+  };
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const remainingSec = Math.max(0, duration - currentTime);
@@ -57,22 +103,38 @@ export default function CarModeModal({ isOpen, onClose }: CarModeModalProps) {
       {/* HEADER MODE VOITURE */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
         <div className="flex items-center gap-2">
-          <div className="px-2.5 py-1 rounded-xl bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+          <div className="px-3 py-1.5 rounded-xl bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
             <span>🚗 Mode Voiture</span>
           </div>
-          <span className="text-xs font-bold text-slate-400">
-            Interface Sécurité Conduite
-          </span>
+          {hasWakeLock && (
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-500/30">
+              <Sun className="w-3 h-3" />
+              <span>Écran maintenu allumé</span>
+            </span>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 text-xs font-extrabold flex items-center gap-2 active:scale-95"
-        >
-          <X className="w-4 h-4" />
-          <span>Quitter</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* SÉLECTEUR RAPIDE VITESSE */}
+          <button
+            type="button"
+            onClick={handleNextSpeed}
+            className="px-3 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-purple-300 border border-slate-700 text-xs font-black font-mono flex items-center gap-1 active:scale-95 transition"
+            title="Changer la vitesse de lecture"
+          >
+            <Gauge className="w-4 h-4 text-purple-400" />
+            <span>{speed}x</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 text-xs font-extrabold flex items-center gap-2 active:scale-95 transition"
+          >
+            <X className="w-4 h-4" />
+            <span>Quitter</span>
+          </button>
+        </div>
       </div>
 
       {/* TITRE ET ÉMISSION EN TRÈS GRAND CARACTÈRE */}
