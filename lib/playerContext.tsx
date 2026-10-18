@@ -33,6 +33,7 @@ interface PlayerContextType {
   lastSkippedAd: { label: string; timestamp: number } | null;
   sleepTimerRemainingSec: number | null;
   isFullPlayerOpen: boolean;
+  isCarModeOpen: boolean;
   quickSkipSec: number;
   forwardSkipSec: number;
   backwardSkipSec: number;
@@ -58,6 +59,8 @@ interface PlayerContextType {
   enqueueSeries: (seriesEpisodes: Episode[]) => void;
   openFullPlayer: () => void;
   closeFullPlayer: () => void;
+  openCarMode: () => void;
+  closeCarMode: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -75,6 +78,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [lastSkippedAd, setLastSkippedAd] = useState<{ label: string; timestamp: number } | null>(null);
   const [sleepTimerRemainingSec, setSleepTimerRemainingSec] = useState<number | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
+  const [isCarModeOpen, setIsCarModeOpen] = useState(false);
 
   // Durées paramétrables des sauts de lecture et de pub
   const [quickSkipSec, setQuickSkipSecState] = useState<number>(() => {
@@ -685,6 +689,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         setBackwardSkipSec,
         openFullPlayer: () => setIsFullPlayerOpen(true),
         closeFullPlayer: () => setIsFullPlayerOpen(false),
+        isCarModeOpen,
+        openCarMode: () => setIsCarModeOpen(true),
+        closeCarMode: () => setIsCarModeOpen(false),
       }}
     >
       {children}

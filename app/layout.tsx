@@ -4,6 +4,7 @@ import { PlayerProvider } from '@/lib/playerContext';
 import Navbar from '@/components/Navbar';
 import PlayerBar from '@/components/PlayerBar';
 import FullPlayerModal from '@/components/FullPlayerModal';
+import CarModeModal from '@/components/CarModeModal';
 import AdSkipBanner from '@/components/AdSkipBanner';
 import AppUpdateNotifier from '@/components/AppUpdateNotifier';
 import AndroidBackHandler from '@/components/AndroidBackHandler';
@@ -37,6 +38,7 @@ export default function RootLayout({
           </main>
           <PlayerBar />
           <FullPlayerModal />
+          <CarModeModal />
           <AndroidBackHandler />
         </PlayerProvider>
       </body>

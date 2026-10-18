@@ -44,11 +44,13 @@ import {
   RotateCw,
 } from 'lucide-react';
 import PodcastImportModal from '@/components/PodcastImportModal';
+import FeedbackModal from '@/components/FeedbackModal';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<GlobalAdSettings>(getGlobalAdSettings());
   const [savedToast, setSavedToast] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Mises à jour APK
   const [apkRelease, setApkRelease] = useState<LatestApkRelease | null>(null);
@@ -342,7 +344,7 @@ export default function SettingsPage() {
               type="text"
               value={keoUser}
               onChange={(e) => handleSaveUser(e.target.value)}
-              placeholder="ex: hacene ou mon-email@exemple.com"
+              placeholder="ex: auditeur ou mon-compte@exemple.com"
               className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
             />
             <button
@@ -718,13 +720,14 @@ export default function SettingsPage() {
             <ExternalLink className="w-3.5 h-3.5 opacity-80" />
           </a>
 
-          <a
-            href="mailto:heyhacene@gmail.com?subject=%5BKeoKaster%5D%20Feedback%20%26%20Suggestions"
-            className="w-full py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95"
+          <button
+            type="button"
+            onClick={() => setShowFeedbackModal(true)}
+            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600/30 via-indigo-600/30 to-purple-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95 shadow-md"
           >
             <LifeBuoy className="w-4 h-4 text-purple-400" />
-            <span>Aide, Feedback & Retours</span>
-          </a>
+            <span>Aide, Feedback & Retours (Formulaire)</span>
+          </button>
         </div>
       </div>
 
@@ -742,6 +745,12 @@ export default function SettingsPage() {
       <PodcastImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
+      />
+
+      {/* MODAL FEEDBACK IN-APP */}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
       />
     </div>
   );

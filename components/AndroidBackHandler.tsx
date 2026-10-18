@@ -7,18 +7,24 @@ import { usePlayer } from '@/lib/playerContext';
 export default function AndroidBackHandler() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isFullPlayerOpen, closeFullPlayer } = usePlayer();
+  const { isFullPlayerOpen, closeFullPlayer, isCarModeOpen, closeCarMode } = usePlayer();
 
   const [showExitToast, setShowExitToast] = useState(false);
 
   const isFullPlayerOpenRef = useRef(isFullPlayerOpen);
   isFullPlayerOpenRef.current = isFullPlayerOpen;
 
+  const isCarModeOpenRef = useRef(isCarModeOpen);
+  isCarModeOpenRef.current = isCarModeOpen;
+
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
 
   const closeFullPlayerRef = useRef(closeFullPlayer);
   closeFullPlayerRef.current = closeFullPlayer;
+
+  const closeCarModeRef = useRef(closeCarMode);
+  closeCarModeRef.current = closeCarMode;
 
   useEffect(() => {
     let removeListener: (() => void) | null = null;
@@ -31,7 +37,13 @@ export default function AndroidBackHandler() {
         const { App } = await import('@capacitor/app');
 
         const listener = await App.addListener('backButton', () => {
-          // 1. Si le grand lecteur plein écran est ouvert, on le referme simplement
+          // 1. Si le mode voiture est ouvert, on le referme
+          if (isCarModeOpenRef.current) {
+            closeCarModeRef.current();
+            return;
+          }
+
+          // 2. Si le grand lecteur plein écran est ouvert, on le referme
           if (isFullPlayerOpenRef.current) {
             closeFullPlayerRef.current();
             return;
