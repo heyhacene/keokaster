@@ -82,6 +82,8 @@ export default function PodcastImportModal({
             description: item.description || '',
             feedUrl: item.feedUrl,
             artworkUrl: item.artworkUrl || '',
+            categories: [],
+            isSubscribed: true,
             subscribedAt: new Date().toISOString(),
           });
           existingUrls.add(item.feedUrl.toLowerCase());
@@ -143,6 +145,8 @@ export default function PodcastImportModal({
         description: '',
         feedUrl: resolved.feedUrl,
         artworkUrl: resolved.artworkUrl || '',
+        categories: [],
+        isSubscribed: true,
         subscribedAt: new Date().toISOString(),
       };
 

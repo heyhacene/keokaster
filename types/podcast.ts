@@ -52,6 +52,7 @@ export interface Podcast {
   episodeCount?: number;
   websiteUrl?: string;
   isSubscribed?: boolean;
+  subscribedAt?: string;
   settings?: PodcastSettings;
 }
 
