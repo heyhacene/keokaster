@@ -285,7 +285,7 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
       <div
         onClick={handleRowClick}
         {...longPressHandlers}
-        className={`p-4 rounded-3xl border transition-all duration-200 flex items-center gap-4 cursor-pointer group select-none relative ${
+        className={`p-3 sm:p-4 rounded-2xl sm:rounded-3xl border transition-all duration-200 flex items-center gap-3 sm:gap-4 cursor-pointer group select-none relative ${
           isCurrent
             ? 'bg-purple-950/40 border-purple-500/60 shadow-lg shadow-purple-950/40'
             : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800/80 hover:border-slate-700'
@@ -295,7 +295,7 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
         <button
           type="button"
           onClick={handlePlayClick}
-          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shrink-0 transition-transform active:scale-90 flex items-center justify-center shadow-lg relative overflow-hidden group/btn ${
+          className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl shrink-0 transition-transform active:scale-90 flex items-center justify-center shadow-lg relative overflow-hidden group/btn ${
             isCurrentlyPlaying
               ? 'ring-2 ring-purple-400 shadow-purple-600/50'
               : isCurrent
@@ -328,13 +328,13 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
           />
 
           {/* PASTILLE DE LECTURE CENTRÉE */}
-          <div className="relative z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-950/80 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 shadow-md">
+          <div className="relative z-10 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-950/80 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 shadow-md">
             {isCurrentlyBuffering ? (
-              <Loader2 className="w-5 h-5 animate-spin text-white" />
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-white" />
             ) : isCurrentlyPlaying ? (
-              <Pause className="w-5 h-5 fill-white" />
+              <Pause className="w-4 h-4 sm:w-5 sm:h-5 fill-white" />
             ) : (
-              <Play className="w-5 h-5 fill-white ml-0.5" />
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-white ml-0.5" />
             )}
           </div>
         </button>
@@ -344,37 +344,37 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
           {podcastName && (
             <p className="text-[11px] font-extrabold text-purple-400 truncate mb-1 flex items-center gap-1.5">
               <Radio className="w-3 h-3 text-purple-400 shrink-0" />
-              <span>{podcastName}</span>
+              <span className="truncate">{podcastName}</span>
             </p>
           )}
 
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 flex-wrap">
             {episode.pubDate && (
-              <span className="text-xs font-semibold text-slate-400">
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-400 whitespace-nowrap shrink-0">
                 {formatDate(episode.pubDate)}
               </span>
             )}
             {episode.durationSec > 0 && (
-              <span className="text-xs font-mono text-slate-400">
+              <span className="text-[11px] sm:text-xs font-mono text-slate-400 whitespace-nowrap shrink-0">
                 • {formatDuration(episode.durationSec)}
               </span>
             )}
             {episode.chapters && episode.chapters.length > 0 && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                {episode.chapters.length} chapitres
+              <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 whitespace-nowrap shrink-0">
+                {episode.chapters.length} chap.
               </span>
             )}
             {seriesInfo.isSeries && (
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shadow-sm">
-                <Layers className="w-3 h-3 text-amber-400" />
-                <span>Partie {seriesInfo.badgeLabel}</span>
+              <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shadow-sm whitespace-nowrap shrink-0">
+                <Layers className="w-3 h-3 text-amber-400 shrink-0" />
+                <span>P.{seriesInfo.badgeLabel}</span>
               </span>
             )}
 
             {/* BADGE HORS-LIGNE SI TÉLÉCHARGÉ */}
             {isDownloaded && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shadow-sm">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shadow-sm whitespace-nowrap shrink-0">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                 <span>Hors-ligne</span>
               </span>
             )}
@@ -384,27 +384,27 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
               <button
                 type="button"
                 onClick={handleToggleAdBlock}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 hover:bg-emerald-500/25 transition active:scale-95"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 hover:bg-emerald-500/25 transition active:scale-95 whitespace-nowrap shrink-0"
                 title="Stop-Pub actif pour cette émission (Cliquer pour désactiver)"
               >
-                <Zap className="w-3 h-3 fill-emerald-400" />
+                <Zap className="w-3 h-3 fill-emerald-400 shrink-0" />
                 <span>Anti-Pub</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleToggleAdBlock}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 hover:bg-amber-500/25 transition active:scale-95"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 hover:bg-amber-500/25 transition active:scale-95 whitespace-nowrap shrink-0"
                 title="Stop-Pub désactivé pour cette émission (Cliquer pour réactiver)"
               >
-                <ZapOff className="w-3 h-3 text-amber-400" />
+                <ZapOff className="w-3 h-3 text-amber-400 shrink-0" />
                 <span>Pubs actives</span>
               </button>
             )}
           </div>
 
           <h4
-            className={`text-sm sm:text-base font-bold leading-snug line-clamp-2 ${
+            className={`text-xs sm:text-sm md:text-base font-bold leading-snug line-clamp-2 ${
               isCurrent ? 'text-purple-300 font-extrabold' : 'text-white group-hover:text-purple-200'
             } transition`}
           >
@@ -412,20 +412,20 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
           </h4>
 
           {episode.description && (
-            <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-1 sm:line-clamp-2 mt-1 leading-relaxed">
               {episode.description}
             </p>
           )}
         </div>
 
-        {/* ACTIONS RAPIDES */}
-        <div className="shrink-0 flex items-center gap-1">
+        {/* ACTIONS RAPIDES (OPTIMISÉES MOBILE : COMPACTES & SANS ÉCRASEMENT) */}
+        <div className="shrink-0 flex items-center gap-0.5 sm:gap-1">
           {/* BOUTON TÉLÉCHARGEMENT HORS-LIGNE */}
           <button
             type="button"
             onClick={handleDownloadToggle}
             disabled={isDownloading}
-            className={`p-3 rounded-2xl transition active:scale-90 ${
+            className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl transition active:scale-90 ${
               isDownloaded
                 ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
                 : isDownloading
@@ -442,7 +442,7 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
           >
             {isDownloading ? (
               <div className="relative flex items-center justify-center">
-                <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-400" />
                 {downloadProgress > 0 && (
                   <span className="absolute -bottom-2 text-[8px] font-mono font-bold text-purple-300">
                     {downloadProgress}%
@@ -450,23 +450,23 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
                 )}
               </div>
             ) : isDownloaded ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
             ) : (
-              <ArrowDownToLine className="w-5 h-5" />
+              <ArrowDownToLine className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </button>
 
-          {/* BOUTON PLAYLIST RAPIDE */}
+          {/* BOUTON PLAYLIST RAPIDE (TABLETTE / DESKTOP, DISPONIBLE DANS LE MENU 3 POINTS SUR MOBILE) */}
           <button
             type="button"
             onClick={handleOpenPlaylistModal}
-            className="p-3 text-slate-400 hover:text-purple-300 rounded-2xl hover:bg-slate-800 transition active:scale-90"
+            className="hidden md:inline-flex p-2.5 text-slate-400 hover:text-purple-300 rounded-2xl hover:bg-slate-800 transition active:scale-90"
             title="Ajouter à une playlist"
           >
             <FolderPlus className="w-5 h-5" />
           </button>
 
-          {/* BOUTON FILE D'ATTENTE */}
+          {/* BOUTON FILE D'ATTENTE (TABLETTE / DESKTOP, DISPONIBLE DANS LE MENU 3 POINTS SUR MOBILE) */}
           <button
             type="button"
             onClick={(e) => {
@@ -475,23 +475,23 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
               setToastMsg('➕ Ajouté à la file d\'attente !');
               setTimeout(() => setToastMsg(null), 1800);
             }}
-            className="p-3 text-slate-400 hover:text-white rounded-2xl hover:bg-slate-800 transition active:scale-90"
+            className="hidden sm:inline-flex p-2 sm:p-2.5 text-slate-400 hover:text-white rounded-2xl hover:bg-slate-800 transition active:scale-90"
             title="Ajouter à la file d'attente"
           >
-            <ListPlus className="w-5 h-5" />
+            <ListPlus className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          {/* BOUTON MENU APPUI LONG / OPTIONS */}
+          {/* BOUTON MENU APPUI LONG / OPTIONS (TOUJOURS VISIBLE) */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setShowActionModal(true);
             }}
-            className="p-3 text-slate-400 hover:text-white rounded-2xl hover:bg-slate-800 transition active:scale-90"
+            className="p-2 sm:p-2.5 text-slate-400 hover:text-white rounded-xl sm:rounded-2xl hover:bg-slate-800 transition active:scale-90"
             title="Plus d'options (Appui long)"
           >
-            <MoreVertical className="w-5 h-5" />
+            <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           {/* OPTION RETRAIT DE PLAYLIST SI SPÉCIFIÉ */}
@@ -502,10 +502,10 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
                 e.stopPropagation();
                 onRemoveFromPlaylist();
               }}
-              className="p-3 text-slate-400 hover:text-red-400 rounded-2xl hover:bg-slate-800 transition active:scale-90"
+              className="p-2 sm:p-2.5 text-slate-400 hover:text-red-400 rounded-xl sm:rounded-2xl hover:bg-slate-800 transition active:scale-90"
               title="Retirer de la playlist"
             >
-              <Trash2 className="w-5 h-5" />
+              <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           )}
         </div>

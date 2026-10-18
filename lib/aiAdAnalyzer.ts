@@ -82,7 +82,7 @@ export function detectDAINetwork(
     return {
       isDAI: true,
       networkName: 'Radio Nova / Audiomeans',
-      defaultPreRollSec: 32,
+      defaultPreRollSec: 18,
     };
   }
 

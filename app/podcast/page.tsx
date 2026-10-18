@@ -174,11 +174,18 @@ function PodcastContent() {
       list = list.filter((ep) => sagaIds.has(ep.id));
     }
     if (!episodeSearch.trim()) return list;
-    const term = episodeSearch.toLowerCase();
-    return list.filter((ep) =>
+    const term = episodeSearch.toLowerCase().trim();
+    const matches = list.filter((ep) =>
       ep.title.toLowerCase().includes(term) ||
       ep.description.toLowerCase().includes(term)
     );
+    return matches.sort((a, b) => {
+      const aTitle = a.title.toLowerCase();
+      const bTitle = b.title.toLowerCase();
+      const aScore = aTitle === term ? 3 : aTitle.startsWith(term) ? 2 : aTitle.includes(term) ? 1 : 0;
+      const bScore = bTitle === term ? 3 : bTitle.startsWith(term) ? 2 : bTitle.includes(term) ? 1 : 0;
+      return bScore - aScore;
+    });
   }, [sortedEpisodes, episodeSearch, filterSagaOnly, activeSeries]);
 
   const displayedEpisodes = filteredEpisodes.slice(0, visibleCount);
@@ -416,7 +423,7 @@ function PodcastContent() {
                 Sauter l'introduction (secondes) :
               </label>
               <div className="flex items-center gap-1.5 flex-wrap">
-                {[0, 15, 30, 45, 60, 90].map((sec) => (
+                {[0, 15, 18, 20, 25, 30, 45, 60].map((sec) => (
                   <button
                     key={sec}
                     type="button"

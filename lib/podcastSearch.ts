@@ -131,8 +131,16 @@ function normalizeText(str: string): string {
     .trim();
 }
 
+function stripLeadingArticles(str: string): string {
+  if (!str) return '';
+  return str.replace(/^(?:le|la|les|l|un|une|des|the)\s+/i, '').trim();
+}
+
 export async function searchPodcasts(query: string): Promise<SearchResultItem[]> {
-  const cleanQuery = query.trim();
+  const cleanQuery = query
+    .replace(/["'«»“”„]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!cleanQuery) return [];
 
   // Si l'utilisateur colle directement une URL de flux RSS
@@ -192,6 +200,7 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
   if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
     const normQuery = normalizeText(cleanQuery);
     const normSimplified = normalizeText(simplifiedQuery);
+    const strippedQuery = stripLeadingArticles(normQuery);
     const qWords = normQuery.split(' ').filter(Boolean);
 
     // Mots vides en français (ne doivent jamais justifier à eux seuls un résultat positif)
@@ -216,10 +225,22 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
         const author = r.artistName || 'Artiste inconnu';
         const normTitle = normalizeText(title);
         const normAuthor = normalizeText(author);
+        const strippedTitle = stripLeadingArticles(normTitle);
 
-        const exactMatch = normTitle === normQuery || normTitle === normSimplified;
-        const startsWith = normTitle.startsWith(normQuery) || (normSimplified && normTitle.startsWith(normSimplified));
-        const containsPhrase = normTitle.includes(normQuery) || (normSimplified && normTitle.includes(normSimplified));
+        const exactMatch =
+          normTitle === normQuery ||
+          normTitle === normSimplified ||
+          strippedTitle === strippedQuery;
+
+        const startsWith =
+          normTitle.startsWith(normQuery) ||
+          normTitle.startsWith(normSimplified) ||
+          strippedTitle.startsWith(strippedQuery);
+
+        const containsPhrase =
+          normTitle.includes(normQuery) ||
+          normTitle.includes(normSimplified) ||
+          strippedTitle.includes(strippedQuery);
 
         let matchedSignificant = 0;
         for (const w of significantWords) {
@@ -233,12 +254,28 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
         const hasAnySignificant = significantWords.length === 0 || matchedSignificant > 0;
 
         let score = 0;
-        if (exactMatch) score += 35000;
-        if (startsWith) score += 20000;
+        // Match exact prioritaire
+        if (exactMatch) score += 45000;
+        if (startsWith) score += 22000;
         if (containsPhrase) score += 10000;
         if (allSignificantMatch) score += 6000;
         score += matchedSignificant * 1000;
-        if (normAuthor.includes(normQuery) || normAuthor.includes(normSimplified)) score += 2000;
+        if (normAuthor.includes(normQuery) || normAuthor.includes(normSimplified)) score += 3000;
+
+        // Bonus de brièveté : si le titre correspond pile à la recherche sans rallonge de texte
+        if (strippedTitle.length <= strippedQuery.length + 4) {
+          score += 8000;
+        }
+
+        // Bonus de popularité / présence (nombre d'épisodes de l'émission dans le flux)
+        if (r.trackCount && r.trackCount > 5) {
+          score += Math.min(10000, r.trackCount * 15);
+        }
+
+        // Bonus radio / producteur majeur (Radio Nova, Radio France, RTL, Slate...)
+        if (/(radio nova|radio france|france inter|france culture|rtl|europe 1|rmc|slate)/i.test(author)) {
+          score += 5000;
+        }
 
         return {
           id: canonicalId,
@@ -280,8 +317,19 @@ export async function searchPodcasts(query: string): Promise<SearchResultItem[]>
     // Tri par pertinence : le meilleur résultat en premier
     finalList.sort((a: any, b: any) => b._score - a._score);
 
-    // Limiter aux 10 meilleurs résultats pour ne jamais submerger l'utilisateur de pochettes parasites
-    return finalList.slice(0, 10).map(({ _score, _containsPhrase, _startsWith, _exactMatch, _allSignificantMatch, _hasAnySignificant, ...item }: any) => item);
+    // Déduplication des résultats (Apple Podcasts renvoie parfois deux entrées pour le même flux)
+    const seenIds = new Set<string>();
+    const deduplicatedList: any[] = [];
+    for (const item of finalList) {
+      const key = item.id || item.feedUrl.toLowerCase();
+      if (!seenIds.has(key)) {
+        seenIds.add(key);
+        deduplicatedList.push(item);
+      }
+    }
+
+    // Retourner les 15 meilleurs résultats dédupliqués
+    return deduplicatedList.slice(0, 15).map(({ _score, _containsPhrase, _startsWith, _exactMatch, _allSignificantMatch, _hasAnySignificant, ...item }: any) => item);
   }
 
   // Si aucun résultat externe n'a été trouvé
