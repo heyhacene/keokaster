@@ -17,6 +17,7 @@ import {
   getQueue,
   saveQueue,
 } from './storage';
+import { getOfflineAudioUrl } from './offlineStorage';
 
 interface PlayerContextType {
   currentEpisode: Episode | null;
@@ -339,9 +340,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         setTimeout(() => setLastSkippedAd(null), 4000);
       }
 
-      audio.src = ep.audioUrl;
-      audio.playbackRate = pSettings.customSpeed || speed;
-      audio.load();
+      getOfflineAudioUrl(ep.id).then((offlineUrl) => {
+        if (offlineUrl) {
+          audio.src = offlineUrl;
+        } else {
+          audio.src = ep.audioUrl;
+        }
+        audio.playbackRate = pSettings.customSpeed || speed;
+        audio.load();
+      }).catch(() => {
+        audio.src = ep.audioUrl;
+        audio.playbackRate = pSettings.customSpeed || speed;
+        audio.load();
+      });
 
       let readyHandled = false;
       const onReadyToPlay = () => {

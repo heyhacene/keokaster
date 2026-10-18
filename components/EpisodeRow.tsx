@@ -21,6 +21,8 @@ import {
   Share2,
   MoreVertical,
   Radio,
+  ArrowDownToLine,
+  CheckCircle2,
 } from 'lucide-react';
 import { detectSeriesPart } from '@/lib/seriesDetector';
 import {
@@ -33,6 +35,11 @@ import {
   addEpisodeToDefaultPlaylist,
   DEFAULT_PLAYLIST_ID,
 } from '@/lib/storage';
+import {
+  downloadEpisode,
+  isEpisodeDownloaded,
+  deleteDownloadedEpisode,
+} from '@/lib/offlineStorage';
 import { useLongPress } from '@/lib/useLongPress';
 
 interface EpisodeRowProps {
@@ -75,6 +82,9 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [artworkError, setArtworkError] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const artworkSrc = (!artworkError && (episode.artworkUrl || episode.podcastArtwork)) || undefined;
   const podcastName = episode.podcastTitle || '';
@@ -85,6 +95,27 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
     const p = getPodcastSettings(episode.podcastId);
     return g.enabled && p.adBlockEnabled !== false;
   });
+
+  useEffect(() => {
+    let mounted = true;
+    isEpisodeDownloaded(episode.id).then((dl) => {
+      if (mounted) setIsDownloaded(dl);
+    });
+
+    const handleOfflineChanged = (e: any) => {
+      if (e?.detail?.episodeId === episode.id || !e?.detail?.episodeId) {
+        isEpisodeDownloaded(episode.id).then((dl) => {
+          if (mounted) setIsDownloaded(dl);
+        });
+      }
+    };
+
+    window.addEventListener('keokaster_offline_changed', handleOfflineChanged);
+    return () => {
+      mounted = false;
+      window.removeEventListener('keokaster_offline_changed', handleOfflineChanged);
+    };
+  }, [episode.id]);
 
   useEffect(() => {
     const updateAdStatus = () => {
@@ -219,6 +250,36 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
     }
   };
 
+  const handleDownloadToggle = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (isDownloading) return;
+
+    if (isDownloaded) {
+      await deleteDownloadedEpisode(episode.id);
+      setIsDownloaded(false);
+      setToastMsg('🗑️ Épisode retiré de vos téléchargements hors-ligne');
+      setTimeout(() => setToastMsg(null), 2000);
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setToastMsg('⏳ Téléchargement hors-ligne en cours...');
+
+    const ok = await downloadEpisode(episode, (pct) => {
+      setDownloadProgress(pct);
+    });
+
+    setIsDownloading(false);
+    if (ok) {
+      setIsDownloaded(true);
+      setToastMsg('✅ Épisode téléchargé ! Écoutable 100% hors-ligne');
+    } else {
+      setToastMsg('❌ Échec du téléchargement audio');
+    }
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
   return (
     <>
       <div
@@ -310,6 +371,14 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
               </span>
             )}
 
+            {/* BADGE HORS-LIGNE SI TÉLÉCHARGÉ */}
+            {isDownloaded && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shadow-sm">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>Hors-ligne</span>
+              </span>
+            )}
+
             {/* BADGE ANTI-PUB DYNAMIQUE & CLIQUABLE */}
             {isAdBlockActive ? (
               <button
@@ -351,6 +420,42 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
 
         {/* ACTIONS RAPIDES */}
         <div className="shrink-0 flex items-center gap-1">
+          {/* BOUTON TÉLÉCHARGEMENT HORS-LIGNE */}
+          <button
+            type="button"
+            onClick={handleDownloadToggle}
+            disabled={isDownloading}
+            className={`p-3 rounded-2xl transition active:scale-90 ${
+              isDownloaded
+                ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
+                : isDownloading
+                ? 'text-purple-400 bg-purple-500/10'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title={
+              isDownloaded
+                ? 'Téléchargé hors-ligne (Cliquer pour supprimer)'
+                : isDownloading
+                ? `Téléchargement ${downloadProgress}%`
+                : 'Télécharger pour écoute hors-ligne'
+            }
+          >
+            {isDownloading ? (
+              <div className="relative flex items-center justify-center">
+                <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                {downloadProgress > 0 && (
+                  <span className="absolute -bottom-2 text-[8px] font-mono font-bold text-purple-300">
+                    {downloadProgress}%
+                  </span>
+                )}
+              </div>
+            ) : isDownloaded ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            ) : (
+              <ArrowDownToLine className="w-5 h-5" />
+            )}
+          </button>
+
           {/* BOUTON PLAYLIST RAPIDE */}
           <button
             type="button"
@@ -562,6 +667,42 @@ export default function EpisodeRow({ episode, isPlayed = false, onRemoveFromPlay
                     {isAdBlockActive
                       ? 'Actuellement : Anti-pub actif'
                       : 'Actuellement : Pubs actives pour ce podcast'}
+                  </p>
+                </div>
+              </button>
+
+              {/* TÉLÉCHARGEMENT HORS-LIGNE */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  setShowActionModal(false);
+                  handleDownloadToggle(e);
+                }}
+                className="w-full p-3 rounded-2xl bg-slate-950/70 hover:bg-purple-900/40 border border-slate-800 hover:border-purple-500/40 text-left flex items-center gap-3.5 transition group"
+              >
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition ${
+                    isDownloaded
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-purple-600/20 text-purple-300'
+                  }`}
+                >
+                  {isDownloaded ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  ) : (
+                    <ArrowDownToLine className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-bold text-white group-hover:text-purple-200">
+                    {isDownloaded
+                      ? 'Supprimer du stockage hors-ligne'
+                      : 'Télécharger pour écoute hors-ligne'}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {isDownloaded
+                      ? 'Libérer l\'espace disque local de votre appareil'
+                      : 'Écoutez sans connexion internet ni consommation de données'}
                   </p>
                 </div>
               </button>

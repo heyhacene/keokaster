@@ -11,27 +11,54 @@ import {
 } from '@/lib/storage';
 import { usePlayer } from '@/lib/playerContext';
 import EpisodeRow from '@/components/EpisodeRow';
-import { ListMusic, Plus, Play, Trash2, ChevronDown, ChevronUp, FolderPlus, Clock, Sparkles } from 'lucide-react';
+import {
+  ListMusic,
+  Plus,
+  Play,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  FolderPlus,
+  Clock,
+  Sparkles,
+  Layers,
+  Zap,
+} from 'lucide-react';
+import { SMART_PLAYLISTS } from '@/lib/smartPlaylists';
+import { getDownloadedEpisodes } from '@/lib/offlineStorage';
 
 export default function PlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [smartExpandedId, setSmartExpandedId] = useState<string | null>(null);
+  const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [toast, setToast] = useState<string | null>(null);
 
-  const { playSeries, enqueueSeries } = usePlayer();
+  const { playSeries, enqueueSeries, queue } = usePlayer();
 
-  const refreshPlaylists = () => {
-    setPlaylists(getPlaylists());
+  const refreshPlaylists = async () => {
+    const pls = getPlaylists();
+    setPlaylists(pls);
+    const dls = await getDownloadedEpisodes();
+    const map = new Map<string, Episode>();
+    pls.forEach((p) => p.episodes.forEach((ep) => map.set(ep.id, ep)));
+    dls.forEach((d) => map.set(d.episode.id, d.episode));
+    queue.forEach((ep) => map.set(ep.id, ep));
+    setAllEpisodes(Array.from(map.values()));
   };
 
   useEffect(() => {
     refreshPlaylists();
     window.addEventListener('keokaster_playlists_changed', refreshPlaylists);
-    return () => window.removeEventListener('keokaster_playlists_changed', refreshPlaylists);
-  }, []);
+    window.addEventListener('keokaster_offline_changed', refreshPlaylists);
+    return () => {
+      window.removeEventListener('keokaster_playlists_changed', refreshPlaylists);
+      window.removeEventListener('keokaster_offline_changed', refreshPlaylists);
+    };
+  }, [queue]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,6 +193,108 @@ export default function PlaylistsPage() {
           </div>
         </form>
       )}
+
+      {/* SECTION PLAYLISTS INTELLIGENTES */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-300">
+              Playlists Intelligentes (Automatiques)
+            </h2>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+            Dynamique
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {SMART_PLAYLISTS.map((sp) => {
+            const episodes = sp.getEpisodes(allEpisodes);
+            const isSmartExpanded = smartExpandedId === sp.id;
+
+            return (
+              <div
+                key={sp.id}
+                className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-lg transition hover:border-purple-500/30"
+              >
+                <div
+                  className="p-4 flex items-center justify-between gap-3 cursor-pointer"
+                  onClick={() => setSmartExpandedId(isSmartExpanded ? null : sp.id)}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                        {sp.badgeLabel}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {episodes.length} épisode{episodes.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <h3 className="font-extrabold text-sm sm:text-base text-white mt-1 truncate">
+                      {sp.name}
+                    </h3>
+
+                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                      {sp.description}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {episodes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playSeries(episodes);
+                          setToast(`▶️ Lecture de « ${sp.name} » (${episodes.length} épisodes) !`);
+                          setTimeout(() => setToast(null), 3000);
+                        }}
+                        className={`p-2.5 rounded-2xl bg-gradient-to-r ${sp.color} text-white hover:opacity-90 transition shadow-md active:scale-95`}
+                        title="Tout écouter"
+                      >
+                        <Play className="w-4 h-4 fill-white ml-0.5" />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setSmartExpandedId(isSmartExpanded ? null : sp.id)}
+                      className="p-2 text-slate-400 hover:text-white rounded-xl transition"
+                    >
+                      {isSmartExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ÉPISODES DE LA PLAYLIST INTELLIGENTE */}
+                {isSmartExpanded && (
+                  <div className="border-t border-slate-800 bg-slate-950/60 p-3 sm:p-4 space-y-2">
+                    {episodes.length === 0 ? (
+                      <div className="text-center py-6 text-slate-400 space-y-1">
+                        <p className="text-xs font-semibold">Aucun épisode correspondant actuellement.</p>
+                        <p className="text-[11px] text-slate-500">
+                          Cette sélection se met à jour automatiquement avec vos ajouts et abonnements.
+                        </p>
+                      </div>
+                    ) : (
+                      episodes.map((ep) => <EpisodeRow key={ep.id} episode={ep} />)
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* TITRE SECTION PLAYLISTS PERSONNALISÉES */}
+      <div className="pt-2 flex items-center justify-between">
+        <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-300">
+          Mes Playlists Personnalisées
+        </h2>
+      </div>
 
       {/* LISTE DES PLAYLISTS */}
       {playlists.length === 0 ? (

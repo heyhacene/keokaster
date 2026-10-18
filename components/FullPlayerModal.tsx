@@ -21,7 +21,9 @@ import {
   Bookmark,
   Share2,
   Loader2,
+  Car,
 } from 'lucide-react';
+import CarModeModal from '@/components/CarModeModal';
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return '00:00';
@@ -73,6 +75,7 @@ export default function FullPlayerModal() {
   const [showSleepMenu, setShowSleepMenu] = useState(false);
   const [showChapters, setShowChapters] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [showCarMode, setShowCarMode] = useState(false);
 
   if (!isFullPlayerOpen || !currentEpisode) return null;
 
@@ -105,22 +108,33 @@ export default function FullPlayerModal() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: currentEpisode.title,
-                text: `Écoute cet épisode de ${currentEpisode.podcastTitle} sur Keo Kaster !`,
-                url: window.location.href,
-              }).catch(() => {});
-            }
-          }}
-          className="p-2 text-slate-400 hover:text-white rounded-2xl hover:bg-slate-900 transition"
-          title="Partager l'épisode"
-        >
-          <Share2 className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowCarMode(true)}
+            className="p-2 text-slate-400 hover:text-amber-400 rounded-2xl hover:bg-slate-900 transition flex items-center gap-1"
+            title="Activer le Mode Voiture (Écran Conduite)"
+          >
+            <Car className="w-5 h-5 text-amber-400" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: currentEpisode.title,
+                  text: `Écoute cet épisode de ${currentEpisode.podcastTitle} sur Keo Kaster !`,
+                  url: window.location.href,
+                }).catch(() => {});
+              }
+            }}
+            className="p-2 text-slate-400 hover:text-white rounded-2xl hover:bg-slate-900 transition"
+            title="Partager l'épisode"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* JAQUETTE & INFOS */}
@@ -553,6 +567,9 @@ export default function FullPlayerModal() {
           </div>
         </div>
       )}
+
+      {/* MODAL DU MODE VOITURE (PLEIN ÉCRAN CONDUITE SÉCURISÉE) */}
+      <CarModeModal isOpen={showCarMode} onClose={() => setShowCarMode(false)} />
     </div>
   );
 }

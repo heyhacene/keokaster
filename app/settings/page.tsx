@@ -39,11 +39,14 @@ import {
   ShieldAlert,
   Clock,
   Radio,
+  HardDriveDownload,
 } from 'lucide-react';
+import PodcastImportModal from '@/components/PodcastImportModal';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<GlobalAdSettings>(getGlobalAdSettings());
   const [savedToast, setSavedToast] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Mises à jour APK
   const [apkRelease, setApkRelease] = useState<LatestApkRelease | null>(null);
@@ -357,27 +360,38 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* SAUVEGARDE & EXPORT DE SECOURS */}
-        <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+        {/* SAUVEGARDE, IMPORT & RAPATRIEMENT */}
+        <div className="pt-2 border-t border-slate-800 space-y-2">
           <button
             type="button"
-            onClick={handleExportData}
-            className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5"
+            onClick={() => setShowImportModal(true)}
+            className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-purple-600/30 via-indigo-600/30 to-purple-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/40 text-purple-200 hover:text-white text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95 shadow-md"
           >
-            <FileJson className="w-3.5 h-3.5 text-purple-400" />
-            <span>Exporter mes abonnements (JSON)</span>
+            <HardDriveDownload className="w-4 h-4 text-purple-400" />
+            <span>Rapatrier depuis Apple Podcasts, Spotify, Pocket Casts (OPML)...</span>
           </button>
 
-          <label className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
-            <Upload className="w-3.5 h-3.5 text-blue-400" />
-            <span>Importer une sauvegarde</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportData}
-              className="hidden"
-            />
-          </label>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleExportData}
+              className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5"
+            >
+              <FileJson className="w-3.5 h-3.5 text-purple-400" />
+              <span>Exporter en JSON</span>
+            </button>
+
+            <label className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
+              <Upload className="w-3.5 h-3.5 text-blue-400" />
+              <span>Importer sauvegarde JSON</span>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportData}
+                className="hidden"
+              />
+            </label>
+          </div>
         </div>
       </div>
 
@@ -622,6 +636,12 @@ export default function SettingsPage() {
           KeoPass • Keo Family (Dar) • Keo Kaster • Fait avec passion
         </p>
       </div>
+
+      {/* MODAL RAPATRIEMENT DE PODCASTS */}
+      <PodcastImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+      />
     </div>
   );
 }
